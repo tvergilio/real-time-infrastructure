@@ -30,8 +30,14 @@ public class RestaurantRelevanceJob {
         DataStream<RestaurantEvent> eventsStream = viewsStream.union(likesStream).map(value -> {
             // Parse JSON and create RestaurantEvent object
             ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(value, RestaurantEvent.class);
-        });
+            try {
+                return mapper.readValue(value, RestaurantEvent.class);
+            } catch (Exception e) {
+                // Log and skip invalid JSON
+                System.err.println("Failed to deserialize: " + value + ", error: " + e.getMessage());
+                return null;
+            }
+        }).filter(event -> event != null); // Filter out null values
 
         eventsStream.keyBy(RestaurantEvent::getRestaurantId)
                 .timeWindow(Time.minutes(5))  // 5-minute sliding window
@@ -43,7 +49,7 @@ public class RestaurantRelevanceJob {
 
     private static FlinkKafkaProducer<RestaurantRelevance> createKafkaSink() {
         return new FlinkKafkaProducer<>(
-                "localhost:9092",            // Kafka broker list
+                "kafka:9092",            // Kafka broker list
                 "restaurant_relevance",       // Target topic
                 new KafkaSerialisationSchema()      // Serialization schema
         );

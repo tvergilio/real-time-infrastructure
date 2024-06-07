@@ -1,14 +1,29 @@
 package com.xdesign.flink;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class RestaurantEvent {
     private final String restaurantId;
     private final String eventType;
     private final String timestamp;
 
-    public RestaurantEvent(String restaurantId, String eventType, String timestamp) {
+    @JsonCreator
+    public RestaurantEvent(
+            @JsonProperty("restaurantId") String restaurantId,
+            @JsonProperty("eventType") String eventType,
+            @JsonProperty("timestamp") String timestamp
+    ) {
         this.restaurantId = restaurantId;
         this.eventType = eventType;
         this.timestamp = timestamp;
+    }
+
+    // Default constructor for Jackson
+    public RestaurantEvent() {
+        this.restaurantId = null;
+        this.eventType = null;
+        this.timestamp = null;
     }
 
     public String getRestaurantId() {
