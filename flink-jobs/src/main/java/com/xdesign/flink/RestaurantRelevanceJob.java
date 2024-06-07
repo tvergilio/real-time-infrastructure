@@ -1,12 +1,14 @@
 package com.xdesign.flink;
 
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.connector.base.DeliveryGuarantee;
+import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
+
 import java.util.Properties;
 
 public class RestaurantRelevanceJob {
@@ -33,16 +35,16 @@ public class RestaurantRelevanceJob {
         eventsStream.keyBy(RestaurantEvent::getRestaurantId)
                 .timeWindow(Time.minutes(5))
                 .aggregate(new RelevanceAggregate(), new RelevanceWindowingFunction())
-                .addSink(createKafkaSink());
+                .sinkTo(createKafkaSink());
 
         env.execute("Restaurant Relevance Job");
     }
 
-    private static FlinkKafkaProducer<RestaurantRelevance> createKafkaSink() {
-        return new FlinkKafkaProducer<>(
-                "kafka:9092",
-                "restaurant_relevance",
-                new KafkaSerialisationSchema()
-        );
+    private static KafkaSink<RestaurantRelevance> createKafkaSink() {
+        return KafkaSink.<RestaurantRelevance>builder()
+                .setBootstrapServers("kafka:9092")
+                .setRecordSerializer(new KafkaSerialisationSchema())
+                .setDeliverGuarantee( DeliveryGuarantee.AT_LEAST_ONCE)
+                .build();
     }
 }

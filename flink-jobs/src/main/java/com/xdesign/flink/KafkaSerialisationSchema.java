@@ -1,38 +1,23 @@
 package com.xdesign.flink;
 
-import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
-public class KafkaSerialisationSchema implements SerializationSchema<RestaurantRelevance>, DeserializationSchema<RestaurantRelevance> {
+import javax.annotation.Nullable;
+
+public class KafkaSerialisationSchema implements KafkaRecordSerializationSchema<RestaurantRelevance> {
 	private final ObjectMapper mapper = new ObjectMapper();
 
+	@Nullable
 	@Override
-	public byte[] serialize(RestaurantRelevance element) {
+	public ProducerRecord<byte[], byte[]> serialize(RestaurantRelevance restaurantRelevance, KafkaSinkContext kafkaSinkContext, Long aLong) {
 		try {
-			return mapper.writeValueAsBytes(element);
+			byte[] key = restaurantRelevance.getRestaurantId().getBytes();
+			byte[] value = mapper.writeValueAsBytes(restaurantRelevance);
+			return new ProducerRecord<>("restaurant_relevance", key, value);
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to serialize element", e);
 		}
-	}
-
-	@Override
-	public RestaurantRelevance deserialize(byte[] message) {
-		try {
-			return mapper.readValue(message, RestaurantRelevance.class);
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to deserialize message", e);
-		}
-	}
-
-	@Override
-	public boolean isEndOfStream(RestaurantRelevance nextElement) {
-		return false;
-	}
-
-	@Override
-	public TypeInformation<RestaurantRelevance> getProducedType() {
-		return TypeInformation.of(RestaurantRelevance.class);
 	}
 }
