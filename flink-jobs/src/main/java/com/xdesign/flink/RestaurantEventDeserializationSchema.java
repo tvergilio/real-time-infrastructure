@@ -12,7 +12,13 @@ public class RestaurantEventDeserializationSchema implements DeserializationSche
 
     @Override
     public RestaurantEvent deserialize(byte[] message) throws IOException {
-        return mapper.readValue(message, RestaurantEvent.class);
+        try {
+            return mapper.readValue(message, RestaurantEvent.class);
+        } catch (Exception e) {
+            // Log the exception and return null
+            System.err.println("Failed to deserialize message: " + e.getMessage());
+            return null;
+        }
     }
 
     @Override

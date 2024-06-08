@@ -4,7 +4,7 @@ import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
-public class RelevanceWindowingFunction extends
+public class RelevanceScoringFunction extends
         ProcessWindowFunction<RelevanceAccumulator, RestaurantRelevance, String, TimeWindow> {
     @Override
     public void process(String key, Context context, Iterable<RelevanceAccumulator> elements, Collector<RestaurantRelevance> out) {
