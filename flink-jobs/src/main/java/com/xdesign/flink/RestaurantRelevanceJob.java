@@ -28,9 +28,19 @@ public class RestaurantRelevanceJob {
         var likesStream = env.addSource(likesConsumer);
 
         var eventsStream = viewsStream.union(likesStream);
-        var eventsStreamWithTimestamps = eventsStream.assignTimestampsAndWatermarks(WatermarkStrategy.<RestaurantEvent>forMonotonousTimestamps()
-                .withTimestampAssigner((SerializableTimestampAssigner<RestaurantEvent>) (element, recordTimestamp) -> System.currentTimeMillis()));
-        eventsStreamWithTimestamps.keyBy(RestaurantEvent::getRestaurantId).timeWindow(Time.seconds(5)).aggregate(new RelevanceAggregate(), new RelevanceWindowingFunction()).map(new ObjectMapper()::writeValueAsString).sinkTo(createKafkaSink());
+        var eventsStreamWithTimestamps = eventsStream.assignTimestampsAndWatermarks(new RestaurantEventWatermarkStrategy())
+                        .name("Assign Timestamp");
+
+        eventsStreamWithTimestamps.keyBy(RestaurantEvent::getRestaurantId)
+                .timeWindow(Time.seconds(10))
+                .allowedLateness(Time.seconds(1))
+                .aggregate(new RelevanceAggregate(), new RelevanceWindowingFunction())
+                .name("Aggregate and Window")
+                .map(new ObjectMapper()::writeValueAsString)
+                .name("Convert to JSON")
+                .sinkTo(createKafkaSink())
+                .name("Sink to Kafka")
+                .uid("Sink to Kafka");
 
         env.execute("Restaurant Relevance Job");
     }
