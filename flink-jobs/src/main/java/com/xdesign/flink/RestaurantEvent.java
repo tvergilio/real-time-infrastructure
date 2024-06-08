@@ -19,7 +19,13 @@ public class RestaurantEvent {
         this.timestamp = timestamp;
     }
 
-    // Default constructor for Jackson
+    // The following constructors are used for deserialization
+    public RestaurantEvent(String restaurantId) {
+        this.restaurantId = restaurantId;
+        this.eventType = null;
+        this.timestamp = null;
+    }
+
     public RestaurantEvent() {
         this.restaurantId = null;
         this.eventType = null;
