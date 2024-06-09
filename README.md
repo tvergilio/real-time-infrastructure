@@ -17,6 +17,9 @@ The more traffic is expected, the lower the window size should be to provide mor
 
 This information is useful for applications that need to know which restaurants are currently trending.
 
+### System Components
+![architecture.png](assets%2Fimages%2Farchitecture.png)
+
 ### Data Processing Flow
 ![flink.png](assets/images/flink.png)
 
