@@ -3,6 +3,7 @@ package com.xdesign.flink.job;
 import com.xdesign.flink.processing.RelevanceAggregate;
 import com.xdesign.flink.processing.RelevanceScoringFunction;
 import com.xdesign.flink.model.RestaurantEvent;
+import com.xdesign.flink.sink.RedisSink;
 import com.xdesign.flink.transfer.RestaurantEventDeserializationSchema;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.base.DeliveryGuarantee;
@@ -41,7 +42,7 @@ public class RestaurantRelevanceJob {
                 .filter(Objects::nonNull);
 
         // Apply windowing and aggregation to calculate relevance scores
-        eventsStream.keyBy(RestaurantEvent::getRestaurantId)
+        var  jsonStream = eventsStream.keyBy(RestaurantEvent::getRestaurantId)
                 .window(SlidingProcessingTimeWindows.of(Time.seconds(30), Time.seconds(5)))
                 .allowedLateness(Time.seconds(2))
                 .aggregate(new RelevanceAggregate(), new RelevanceScoringFunction())
@@ -53,12 +54,27 @@ public class RestaurantRelevanceJob {
                 .map(new ObjectMapper()::writeValueAsString)
                 .startNewChain()
                 .name("Convert to JSON")
-                .uid("json")
+                .uid("json");
 
-                // Sink the JSON to a Kafka topic
-                .sinkTo(createKafkaSink(kafkaProperties.getProperty("bootstrap.servers")))
+        // Separate streams for Kafka and Redis sinks
+        var kafkaStream = jsonStream.map(value -> value)
+                .startNewChain()
+                .name("Kafka Stream")
+                .uid("kafka-stream");
+        var redisStream = jsonStream.map(value -> value)
+                .startNewChain()
+                .name("Redis Stream")
+                .uid("redis-stream");
+
+        // Sink the JSON to a Kafka topic
+        kafkaStream.sinkTo(createKafkaSink(kafkaProperties.getProperty("bootstrap.servers")))
                 .name("Sink to Kafka")
-                .uid("sink");
+                .uid("sink-kafka");
+
+        // Sink the JSON to Redis
+        redisStream.sinkTo(new RedisSink("redis", 6379))
+                .name("Sink to Redis")
+                .uid("sink-redis");
 
         env.execute("Restaurant Relevance Job");
     }
