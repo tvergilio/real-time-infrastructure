@@ -1,8 +1,11 @@
-package com.xdesign.flink;
+package com.xdesign.flink.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * Simple POJO class to represent a restaurant event.
+ * */
 public class RestaurantEvent {
     private final String restaurantId;
     private final String eventType;

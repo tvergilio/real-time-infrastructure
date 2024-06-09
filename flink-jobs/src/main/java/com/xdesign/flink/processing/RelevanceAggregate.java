@@ -1,7 +1,12 @@
-package com.xdesign.flink;
+package com.xdesign.flink.processing;
 
+import com.xdesign.flink.model.RestaurantEvent;
 import org.apache.flink.api.common.functions.AggregateFunction;
 
+/**
+ * This is an implementation of Flink's AggregateFunction interface.
+ * It is used to aggregate the relevance of a restaurant based on the events it receives.
+ * */
 public class RelevanceAggregate
         implements AggregateFunction<RestaurantEvent, RelevanceAccumulator, RelevanceAccumulator> {
     @Override

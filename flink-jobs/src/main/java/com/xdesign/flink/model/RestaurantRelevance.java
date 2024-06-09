@@ -1,5 +1,8 @@
-package com.xdesign.flink;
+package com.xdesign.flink.model;
 
+/**
+ * Simple POJO class to represent a restaurant's relevance score.
+ * */
 public class RestaurantRelevance {
     private String restaurantId;
     private double relevanceScore;

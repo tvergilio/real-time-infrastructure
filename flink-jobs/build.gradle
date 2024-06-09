@@ -7,8 +7,8 @@ plugins {
 // artifact properties
 group = 'com.xdesign'
 version = '1.0'
-mainClassName = 'com.xdesign.flink.RestaurantRelevanceJob'
-description = """Restaurant Relevance Job"""
+mainClassName = 'com.xdesign.flink.job.RestaurantRelevanceJob'
+description = """Flink job to calculate the relevance of restaurants based on user ratings."""
 ext {
     javaVersion = '11'
     flinkVersion = '1.17.2'
@@ -60,13 +60,28 @@ dependencies {
     // connectors. These must be in the flinkShadowJar configuration!
     // --------------------------------------------------------------
     flinkShadowJar "org.apache.flink:flink-connector-kafka:${flinkVersion}"
+    flinkShadowJar "org.apache.flink:flink-shaded-guava:30.1.1-jre-14.0"
     runtimeOnly "org.apache.logging.log4j:log4j-slf4j-impl:${log4jVersion}"
     runtimeOnly "org.apache.logging.log4j:log4j-api:${log4jVersion}"
     runtimeOnly "org.apache.logging.log4j:log4j-core:${log4jVersion}"
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.17.1'
     // Add test dependencies here.
-    // testCompile "junit:junit:4.12"
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
+    testImplementation group: 'org.mockito', name: 'mockito-core', version: '3.2.4'
+    testImplementation 'org.apache.flink:flink-test-utils:1.20-SNAPSHOT'
 }
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed", "standardOut", "standardError"
+        showExceptions true
+        exceptionFormat "full"
+        showCauses true
+        showStackTraces true
+    }
+}
+
 // make compileOnly dependencies available for tests:
 sourceSets {
     main.compileClasspath += configurations.flinkShadowJar
