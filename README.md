@@ -64,7 +64,7 @@ The `createKafkaSink` method creates a Kafka sink that writes the relevance scor
 
 The Python script `print_relevance_scores.py` is used to print the relevance scores of restaurants in descending order. It connects to Redis and retrieves the sorted set data.
 
-Before running the script, make sure you have Python installed on your machine and the required Python packages installed. You can install the required packages using the `requirements.txt` file in the `python` directory:
+Before running the script, make sure you have Python installed on your machine and the required Python packages are installed. You can install the latter using the `requirements.txt` file in the `python` directory:
 
 ```bash
 pip install -r python/requirements.txt
