@@ -12,7 +12,10 @@ It uses:
 The goal of this system is to calculate the relevance of restaurants in real-time based on views and likes. 
 It leverages Kafka for data ingestion, Flink for data processing, and Redis caching a sorted set of trending restaurants. 
 The system is designed to handle dynamic and real-time information about trending restaurants, updating every 30 seconds based on the relevance scores calculated by the Flink job. 
-This information is crucial for applications that need to know which restaurants are currently trending.
+
+The more traffic is expected, the lower the window size should be to provide more up-to-date information (windows are currently set to a very short duration for demonstration purposes).
+
+This information is useful for applications that need to know which restaurants are currently trending.
 
 ### Data Processing Flow
 ![flink.png](assets/images/flink.png)
@@ -22,12 +25,13 @@ From within the container, run:
 ```bash
 redis-cli
 ```
+List all restaurants and their relevance scores:
+
 ```bash
 ZRANGE restaurant_relevance 0 -1 WITHSCORES
 ```
-The command above lists all restaurants and their relevance scores.
 
-As interactions (views and likes) decrease, the relevance score will decrease, indicating a decline in current interest.
+As interactions (views and likes) increase or decrease, the relevance score is adjusted, indicating an increase or decrease in current interest.
 
 This behavior is useful for applications that need to know which restaurants are trending right now. 
 
