@@ -8,6 +8,28 @@ It uses:
 * **Docker** and **Docker Compose** to deploy the services required by the project.
 * **Redis**, an in-memory data structure store, used as a cache to store the restaurant data.
 
+## System Design and Architecture
+The goal of this system is to calculate the relevance of restaurants in real-time based on views and likes. 
+It leverages Kafka for data ingestion, Flink for data processing, and Redis caching a sorted set of trending restaurants. 
+The system is designed to handle dynamic and real-time information about trending restaurants, updating every 30 seconds based on the relevance scores calculated by the Flink job. 
+This information is crucial for applications that need to know which restaurants are currently trending.
+
+### Data Processing Flow
+![flink.png](assets/images/flink.png)
+
+### Interacting with the Redis CLI
+From within the container, run:
+```bash
+redis-cli
+```
+```bash
+ZRANGE restaurant_relevance 0 -1 WITHSCORES
+```
+The command above lists all restaurants and their relevance scores.
+
+As interactions (views and likes) decrease, the relevance score will decrease, indicating a decline in current interest.
+
+This behavior is useful for applications that need to know which restaurants are trending right now. 
 
 ## Getting Started
 
