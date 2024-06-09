@@ -12,9 +12,8 @@ It uses:
 * **Redis**, an in-memory data store, used as a cache to store the restaurant relevance data.
 
 ## System Design and Architecture
-The goal of this system is to calculate the relevance of restaurants in real time based on views and likes. 
-It leverages Kafka for data ingestion, Flink for data processing, and Redis to cache a sorted set of trending restaurants. 
-The system is designed to handle dynamic and real-time information about trending restaurants, updating every 30 seconds based on the relevance scores calculated by the Flink job. 
+This system leverages state-of-the-art streaming technology: Kafka for data ingestion, Flink for data processing, and Redis to cache a sorted set of trending restaurants. 
+It is designed to handle dynamic and real-time information about trending restaurants, updating every 30 seconds based on relevance scores calculated by the Flink job. 
 
 The more traffic is expected, the lower the window size should be to provide more up-to-date information (windows are currently set to a very short duration for demonstration purposes).
 
