@@ -1,4 +1,4 @@
-# Real-Time Restaurant Relevance Calculation
+# Real-Time Restaurant Relevance Calculator
 
 This project is a Flink job that calculates the relevance of restaurants based on views and likes. 
 It uses:
