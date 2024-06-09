@@ -2,7 +2,6 @@
 
 This project calculates the relevance of restaurants in real time based on views and likes.
 This information is useful for applications that need to know which restaurants are currently trending.
-The system is designed to be scalable and handle high velocity data streams.
 
 It uses:
 * **Kafka**, a distributed and highly scalable event streaming platform, to ingest the data.
@@ -12,8 +11,8 @@ It uses:
 * **Redis**, an in-memory data store, used as a cache to store the restaurant relevance data.
 
 ## System Design and Architecture
-This system leverages state-of-the-art streaming technology: Kafka for data ingestion, Flink for data processing, and Redis to cache a sorted set of trending restaurants. 
-It is designed to handle dynamic and real-time information about trending restaurants, updating every 30 seconds based on relevance scores calculated by the Flink job. 
+This system is designed to be scalable and handle high velocity data streams. It leverages state-of-the-art streaming technology: Kafka for data ingestion, Flink for data processing, and Redis to cache a sorted set of trending restaurants.
+It dynamically updates every 30 seconds based on relevance scores calculated by the Flink job, providing real-time information about trending restaurants.
 
 The more traffic is expected, the lower the window size should be to provide more up-to-date information (windows are currently set to a very short duration for demonstration purposes).
 
