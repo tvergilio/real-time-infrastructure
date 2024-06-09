@@ -1,42 +1,28 @@
 # Real-Time Restaurant Relevance Calculator
 
-This project is a Flink job that calculates the relevance of restaurants based on views and likes. 
+This project calculates the relevance of restaurants in real time based on views and likes.
+This information is useful for applications that need to know which restaurants are currently trending.
+The system is designed to be scalable and handle high velocity data streams.
+
 It uses:
 * **Kafka**, a distributed and highly scalable event streaming platform, to ingest the data.
 * **Flink**, a framework and distributed processing engine for stateful computations over unbounded and bounded data streams, to process the data.
 * **Zookeeper**, a centralised service for maintaining configuration information, naming, providing distributed synchronisation, and providing group services.
 * **Docker** and **Docker Compose** to deploy the services required by the project.
-* **Redis**, an in-memory data structure store, used as a cache to store the restaurant data.
+* **Redis**, an in-memory data store, used as a cache to store the restaurant relevance data.
 
 ## System Design and Architecture
-The goal of this system is to calculate the relevance of restaurants in real-time based on views and likes. 
-It leverages Kafka for data ingestion, Flink for data processing, and Redis caching a sorted set of trending restaurants. 
+The goal of this system is to calculate the relevance of restaurants in real time based on views and likes. 
+It leverages Kafka for data ingestion, Flink for data processing, and Redis to cache a sorted set of trending restaurants. 
 The system is designed to handle dynamic and real-time information about trending restaurants, updating every 30 seconds based on the relevance scores calculated by the Flink job. 
 
 The more traffic is expected, the lower the window size should be to provide more up-to-date information (windows are currently set to a very short duration for demonstration purposes).
-
-This information is useful for applications that need to know which restaurants are currently trending.
 
 ### System Components
 ![architecture.png](assets%2Fimages%2Farchitecture.png)
 
 ### Data Processing Flow
 ![flink.png](assets/images/flink.png)
-
-### Interacting with the Redis CLI
-From within the container, run:
-```bash
-redis-cli
-```
-List all restaurants and their relevance scores:
-
-```bash
-ZRANGE restaurant_relevance 0 -1 WITHSCORES
-```
-
-As interactions (views and likes) increase or decrease, the relevance score is adjusted, indicating an increase or decrease in current interest.
-
-This behavior is useful for applications that need to know which restaurants are trending right now. 
 
 ## Getting Started
 
@@ -76,17 +62,34 @@ The `RestaurantEventDeserializationSchema` class is a schema used to deserialise
 
 The `createKafkaSink` method creates a Kafka sink that writes the relevance scores back to Kafka.
 
-## Authors
+## Redis
 
-- [Thalita Vergilio](https://github.com/tvergilio)
+The Python script `print_relevance_scores.py` is used to print the relevance scores of restaurants in descending order. It connects to Redis and retrieves the sorted set data.
 
-## License
+Before running the script, make sure you have Python installed on your machine and the required Python packages installed. You can install the required packages using the `requirements.txt` file in the `python` directory:
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+```bash
+pip install -r python/requirements.txt
+```
 
-# Kafka
+## Interacting with the Redis CLI
+Alternatively, you can interact with Redis using the Redis CLI. To do this, you need to connect to the Redis container.
+From within the Redis container, run:
 
-## Create topics (initial setup)
+```bash
+redis-cli
+```
+List all restaurants and their relevance scores:
+
+```bash
+ZRANGE restaurant_relevance 0 -1 WITHSCORES
+```
+
+As interactions (views and likes) increase or decrease, the relevance score is adjusted, indicating an increase or decrease in current interest.
+
+## Kafka
+
+### Create topics (initial setup)
 
 ```bash
 docker-compose exec kafka kafka-topics --create --topic restaurant_views --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
@@ -96,30 +99,39 @@ docker-compose exec kafka kafka-topics --create --topic restaurant_likes --parti
 docker-compose exec kafka kafka-topics --create --topic restaurant_relevance --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
 ```    
 
-## Create producers using the console:
-### Restaurant Views
+### Create producers using the console:
+#### Restaurant Views
 ```bash
 docker exec -it {container id} kafka-console-producer --broker-list localhost:9092 --topic restaurant_views
 ```
-### Restaurant Likes
+#### Restaurant Likes
 ```bash
 docker exec -it {container id} kafka-console-producer --broker-list localhost:9092 --topic restaurant_likes
 ```
-## Produce data:
+### Produce data:
 
 ```
 {"restaurantId": "1", "eventType": "view", "timestamp": "2024-06-07T15:55:00Z"}
 {"restaurantId": "1", "eventType": "like", "timestamp": "2024-06-07T15:55:00Z"}
 ```
 
-## Create consumer using the console:
+### Create consumer using the console:
 
 ```bash
 docker exec -it {container id} kafka-console-consumer --bootstrap-server localhost:9092 --topic restaurant_relevance --from-beginning
 ```
 
-## List topics:
+### List topics:
 
 ```bash
 docker-compose exec kafka kafka-topics --list --bootstrap-server kafka:9092
 ```
+
+## Authors
+
+- [Thalita Vergilio](https://github.com/tvergilio)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
