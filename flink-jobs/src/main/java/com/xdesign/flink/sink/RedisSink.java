@@ -33,6 +33,12 @@ public class RedisSink implements Sink<String> {
             this.redisPort = redisPort;
             this.jedis = new Jedis(redisHost, redisPort);
         }
+        // Constructor for testing
+        public RedisSinkWriter(Jedis jedis) {
+            this.redisHost = null;
+            this.redisPort = 0;
+            this.jedis = jedis;
+        }
 
         @Override
         public void write(String element, Context context) throws IOException, InterruptedException {
