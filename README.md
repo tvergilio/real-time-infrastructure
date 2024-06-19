@@ -17,7 +17,7 @@ It dynamically updates every 30 seconds based on relevance scores calculated by 
 The more traffic is expected, the lower the window size should be to provide more up-to-date information (windows are currently set to a very short duration for demonstration purposes).
 
 ### System Components
-![architecture.png](assets%2Fimages%2Farchitecture.png)
+![architecture.png](assets/images/architecture.png)
 
 ### Data Processing Flow
 ![flink.png](assets/images/flink.png)
