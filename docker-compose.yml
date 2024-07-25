@@ -63,6 +63,19 @@ services:
       - flink-network
       - kafka-network
 
+  slack-producer:
+    image: openjdk:21
+    volumes:
+      - ./slack-integration/build/libs:/usr/src/myapp
+    working_dir: /usr/src/myapp
+    command: [ "java", "-cp", "slack-integration-1.0-all.jar", "com.createFuture.SlackIntegrationApp" ]
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+    networks:
+      - kafka-network
+
 networks:
   flink-network:
     driver: bridge

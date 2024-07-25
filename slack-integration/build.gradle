@@ -1,0 +1,42 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group 'com.createFuture'
+version '1.0'
+
+repositories {
+    mavenCentral()
+    gradlePluginPortal()
+}
+
+dependencies {
+    implementation 'com.slack.api:bolt-socket-mode:1.40.3'
+    implementation 'javax.websocket:javax.websocket-api:1.1'
+    implementation 'org.glassfish.tyrus.bundles:tyrus-standalone-client:1.19'
+    implementation 'org.slf4j:slf4j-simple:1.7.36'
+    implementation 'org.apache.kafka:kafka-clients:2.8.0'
+    implementation 'com.github.johnrengelman:shadow:8.1.1'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+application {
+    mainClass = 'com.createFuture.SlackIntegrationApp'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+shadowJar {
+    archiveClassifier.set('all')
+}
+
+apply plugin: 'com.github.johnrengelman.shadow'

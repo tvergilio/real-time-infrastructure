@@ -6,6 +6,7 @@
 *.zip
 *.tar.gz
 *.rar
+*.env
 
 # IntelliJ IDEA files
 .idea/
