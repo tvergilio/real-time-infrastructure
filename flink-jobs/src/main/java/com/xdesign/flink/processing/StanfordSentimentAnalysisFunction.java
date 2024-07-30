@@ -17,7 +17,7 @@ import java.util.Properties;
 
 import static edu.stanford.nlp.neural.rnn.RNNCoreAnnotations.getPredictedClass;
 
-public class SentimentAnalysisFunction extends RichMapFunction<SlackMessage, Tuple2<SlackMessage, Tuple2<List<Integer>, List<String>>>> {
+public class StanfordSentimentAnalysisFunction extends RichMapFunction<SlackMessage, Tuple2<SlackMessage, Tuple2<List<Integer>, List<String>>>> {
 
     private StanfordCoreNLP pipeline;
 
@@ -36,6 +36,10 @@ public class SentimentAnalysisFunction extends RichMapFunction<SlackMessage, Tup
     private Tuple2<List<Integer>, List<String>> getSentiment(String message) {
         List<Integer> scores = new ArrayList<>();
         List<String> classes = new ArrayList<>();
+
+        if (pipeline == null) {
+            throw new IllegalStateException("StanfordCoreNLP pipeline is not initialized.");
+        }
 
         if (message != null && !message.isEmpty()) {
             Annotation annotation = pipeline.process(message);

@@ -11,13 +11,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class SentimentAnalysisFunctionTest {
+class StanfordSentimentAnalysisFunctionTest {
 
-    private SentimentAnalysisFunction function;
+    private StanfordSentimentAnalysisFunction function;
 
     @BeforeEach
     void setUp() {
-        function = new SentimentAnalysisFunction();
+        function = new StanfordSentimentAnalysisFunction();
         function.open(new Configuration());
     }
 
@@ -102,10 +102,10 @@ class SentimentAnalysisFunctionTest {
         var result = aggregate.merge(accumulator1, accumulator2);
 
         assertEquals(2, result.getCount());
-        assertEquals(2, result.getAverageScore(), 0.01);
-        assertEquals("Neutral", result.getAverageClass());
-        assertEquals("Fantastic!", result.getMostPositiveMessage().getMessage());
-        assertEquals("Awful!", result.getMostNegativeMessage().getMessage());
+        assertEquals(2.0, result.getAverageScore(), 0.01);
+        assertEquals("Neutral", result.getResult()); // Changed to "Neutral"
+        assertEquals("Fantastic!", result.getMostPositiveMessage());
+        assertEquals("Awful!", result.getMostNegativeMessage());
     }
 
     @Test
@@ -117,7 +117,7 @@ class SentimentAnalysisFunctionTest {
 
         assertEquals(1, accumulator.getCount());
         assertEquals(3.0, accumulator.getAverageScore(), 0.01);
-        assertEquals("Positive", accumulator.getAverageClass());
-        assertEquals("Fantastic!", accumulator.getMostPositiveMessage().getMessage());
+        assertEquals("Positive", accumulator.getResult());
+        assertEquals("Fantastic!", accumulator.getMostPositiveMessage());
     }
 }

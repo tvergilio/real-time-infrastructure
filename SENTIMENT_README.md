@@ -15,7 +15,7 @@ This system is designed to be scalable and handle high-velocity data streams. It
 TODO
 
 ### Data Processing Flow
-TODO
+![flink-sentiment.png](assets/images/flink-sentiment.png)
 
 ## Slack Integration
 
@@ -85,7 +85,9 @@ Run the following commands to create the Kafka topics required by the project:
 ```bash
 docker-compose exec kafka kafka-topics --create --topic slack_messages --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
 
-docker-compose exec kafka kafka-topics --create --topic sentiment_results --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
+docker-compose exec kafka kafka-topics --create --topic stanford_results --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
+
+docker-compose exec kafka kafka-topics --create --topic gpt4_results --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
 ```
 
 ## Flink Job

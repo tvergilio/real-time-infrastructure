@@ -2,7 +2,8 @@ package com.xdesign.flink.job;
 
 import com.xdesign.flink.processing.SentimentAggregate;
 import com.xdesign.flink.processing.SentimentAccumulator;
-import com.xdesign.flink.processing.SentimentAnalysisFunction;
+import com.xdesign.flink.processing.StanfordSentimentAnalysisFunction;
+import com.xdesign.flink.processing.GPT4ProcessingFunction;
 import com.xdesign.flink.transfer.SlackMessageDeserializationSchema;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.base.DeliveryGuarantee;
@@ -19,8 +20,8 @@ import org.apache.flink.util.Collector;
 import java.util.Properties;
 
 /**
- * A Flink job that reads messages from a Slack channel, performs sentiment analysis,
- * and writes the results to a Kafka topic.
+ * A Flink job that reads Slack messages from a Kafka topic, performs sentiment analysis using the Stanford NLP model and
+ * GPT-4, and writes the results to different Kafka topics.
  */
 public class SentimentAnalysisJob {
 
@@ -39,14 +40,20 @@ public class SentimentAnalysisJob {
                 .name("Kafka Source: Slack Messages")
                 .uid("kafka-source-slack-messages");
 
-        // Perform sentiment analysis on the messages
-        var sentimentResultsStream = slackMessagesStream.map(new SentimentAnalysisFunction())
+        // Perform sentiment analysis using the Stanford NLP model
+        var stanfordSentimentResultsStream = slackMessagesStream.map(new StanfordSentimentAnalysisFunction())
                 .startNewChain()
-                .name("Map: Sentiment Analysis")
-                .uid("map-sentiment-analysis");
+                .name("Map: Stanford Sentiment Analysis")
+                .uid("map-stanford-sentiment-analysis");
+
+        // Perform sentiment analysis using GPT-4
+        var gpt4SentimentResultsStream = slackMessagesStream.map(new GPT4ProcessingFunction())
+                .startNewChain()
+                .name("Map: GPT-4 Sentiment Analysis")
+                .uid("map-gpt4-sentiment-analysis");
 
         // Apply sliding windows of 1 minute with slides of 30 seconds
-        var windowedStream = sentimentResultsStream
+        var stanfordWindowedStream = stanfordSentimentResultsStream
                 .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.seconds(30)))
                 .aggregate(new SentimentAggregate(), new ProcessAllWindowFunction<SentimentAccumulator, SentimentAccumulator, TimeWindow>() {
                     @Override
@@ -58,28 +65,52 @@ public class SentimentAnalysisJob {
                     }
                 })
                 .startNewChain()
-                .name("Aggregate: Windowed Sentiment Analysis")
-                .uid("aggregate-windowed-sentiment-analysis");
+                .name("Aggregate: Stanford Windowed Sentiment Analysis")
+                .uid("aggregate-stanford-windowed-sentiment-analysis");
+
+        var gpt4WindowedStream = gpt4SentimentResultsStream
+                .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.seconds(30)))
+                .aggregate(new SentimentAggregate(), new ProcessAllWindowFunction<SentimentAccumulator, SentimentAccumulator, TimeWindow>() {
+                    @Override
+                    public void process(Context context, Iterable<SentimentAccumulator> elements, Collector<SentimentAccumulator> out) {
+                        SentimentAccumulator accumulator = elements.iterator().next();
+                        accumulator.setStart(context.window().getStart());
+                        accumulator.setEnd(context.window().getEnd());
+                        out.collect(accumulator);
+                    }
+                })
+                .startNewChain()
+                .name("Aggregate: GPT-4 Windowed Sentiment Analysis")
+                .uid("aggregate-gpt4-windowed-sentiment-analysis");
 
         // Convert the results to JSON format
-        var jsonResultsStream = windowedStream.map(value -> value.toString())
+        var stanfordJsonResultsStream = stanfordWindowedStream.map(value -> value.toString())
                 .startNewChain()
-                .name("Map: Convert to JSON")
-                .uid("map-convert-to-json");
+                .name("Map: Convert Stanford to JSON")
+                .uid("map-convert-stanford-to-json");
 
-        // Sink the results to a Kafka topic
-        jsonResultsStream.sinkTo(createKafkaSink(kafkaProperties.getProperty("bootstrap.servers")))
-                .name("Kafka Sink: Sentiment Results")
-                .uid("kafka-sink-sentiment-results");
+        var gpt4JsonResultsStream = gpt4WindowedStream.map(value -> value.toString())
+                .startNewChain()
+                .name("Map: Convert GPT-4 to JSON")
+                .uid("map-convert-gpt4-to-json");
 
-        env.execute("Sentiment Analysis Job");
+        // Sink the results to different Kafka topics
+        stanfordJsonResultsStream.sinkTo(createKafkaSink(kafkaProperties.getProperty("bootstrap.servers"), "stanford_results"))
+                .name("Kafka Sink: Stanford Sentiment Results")
+                .uid("kafka-sink-stanford-sentiment-results");
+
+        gpt4JsonResultsStream.sinkTo(createKafkaSink(kafkaProperties.getProperty("bootstrap.servers"), "gpt4_results"))
+                .name("Kafka Sink: GPT-4 Sentiment Results")
+                .uid("kafka-sink-gpt4-sentiment-results");
+
+        env.execute("Sentiment Comparison Job");
     }
 
-    private static KafkaSink<String> createKafkaSink(String bootstrapServers) {
+    private static KafkaSink<String> createKafkaSink(String bootstrapServers, String topic) {
         return KafkaSink.<String>builder()
                 .setBootstrapServers(bootstrapServers)
                 .setRecordSerializer(KafkaRecordSerializationSchema.builder()
-                        .setTopic("sentiment_results")
+                        .setTopic(topic)
                         .setValueSerializationSchema(new SimpleStringSchema())
                         .build())
                 .setDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
