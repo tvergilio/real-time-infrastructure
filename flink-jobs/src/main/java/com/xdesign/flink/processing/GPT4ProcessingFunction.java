@@ -62,7 +62,7 @@ public class GPT4ProcessingFunction implements Serializable {
                         "**Summary of Sentiment:**\n" +
                         "- **Overall Sentiment:** [Overall Sentiment]\n" +
                         "- **Most Positive Message:** [Most Positive Message]\n" +
-                        "- **Most Negative Message:** [Most Negative Message]\n\n" +
+                        "- **Most Negative Message:** [Most Negative Message]\n" +
                         "- **Message Count:** [Message Count]\n\n" +
                         "Finally, ensure the descriptive paragraph is included.",
                 startFormatted, endFormatted, messages.size(),

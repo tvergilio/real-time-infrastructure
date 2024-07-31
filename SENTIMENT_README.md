@@ -94,6 +94,7 @@ SentimentAccumulator{start=2024-07-31T15:18:30, end=2024-07-31T15:19:30, average
 - **Overall Sentiment:** Positive  
 - **Most Positive Message:** "That was amazing!"  
 - **Most Negative Message:** "Average, I think. I have seen better."
+- **Message Count:** 5  
 The overall sentiment of the messages processed during the time window is neutral. The tone of the messages indicates that the users found their experiences to be mediocre, with phrases highlighting that things were "ok," "fine," and "average," suggesting an absence of strong emotion or enthusiasm. While there isn't outright negativity, the language used hints at a sense of disappointment or lack of fulfillment, implying that they expected something better. 
 ```
 
