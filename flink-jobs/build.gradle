@@ -72,6 +72,10 @@ dependencies {
     flinkShadowJar 'edu.stanford.nlp:stanford-corenlp:4.5.6'
     flinkShadowJar 'edu.stanford.nlp:stanford-corenlp:4.5.6:models'
 
+    // GPT-4
+    flinkShadowJar 'com.squareup.okhttp3:okhttp:4.9.3'
+    flinkShadowJar 'com.fasterxml.jackson.core:jackson-databind:2.12.3'
+
     // Add test dependencies here.
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
     testImplementation group: 'org.mockito', name: 'mockito-core', version: '3.2.4'

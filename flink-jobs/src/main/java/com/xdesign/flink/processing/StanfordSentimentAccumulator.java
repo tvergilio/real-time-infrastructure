@@ -9,27 +9,25 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SentimentAccumulator {
+public class StanfordSentimentAccumulator {
 
     private long start;
     private long end;
     private double averageScore;
-    private String result; // Common field for Stanford class and GPT-4 summary
+    private String result;
     private String mostPositiveMessage;
     private String mostNegativeMessage;
     private int messageCount;
     private List<Integer> scores;
     private List<String> classes;
 
-    public SentimentAccumulator() {
+    public StanfordSentimentAccumulator() {
         this.scores = new ArrayList<>();
         this.classes = new ArrayList<>();
         this.messageCount = 0;
     }
 
-    public void add(SlackMessage message, Tuple2<List<Integer>, List<String>> sentiment, long start, long end) {
-        this.start = start;
-        this.end = end;
+    public void add(SlackMessage message, Tuple2<List<Integer>, List<String>> sentiment) {
         this.scores.addAll(sentiment.f0);
         this.classes.addAll(sentiment.f1);
         this.messageCount++;
@@ -42,12 +40,17 @@ public class SentimentAccumulator {
         }
 
         // Calculate average score
-        this.averageScore = this.scores.stream().mapToInt(Integer::intValue).average().orElse(0.0);
+        this.averageScore = this.scores
+                .stream()
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0.0);
+
         // Set result based on the average score
         this.result = classifySentiment(this.averageScore);
     }
 
-    public void merge(SentimentAccumulator other) {
+    public void merge(StanfordSentimentAccumulator other) {
         int totalMessages = this.messageCount + other.messageCount;
         double totalScore = (this.averageScore * this.messageCount + other.averageScore * other.messageCount);
 
@@ -58,10 +61,10 @@ public class SentimentAccumulator {
         this.averageScore = totalScore / totalMessages;
 
         // Retain the most positive and most negative messages
-        if (this.mostPositiveMessage == null || other.mostPositiveMessage != null && other.averageScore > this.averageScore) {
+        if (this.mostPositiveMessage == null || (other.mostPositiveMessage != null && other.averageScore > this.averageScore)) {
             this.mostPositiveMessage = other.mostPositiveMessage;
         }
-        if (this.mostNegativeMessage == null || other.mostNegativeMessage != null && other.averageScore < this.averageScore) {
+        if (this.mostNegativeMessage == null || (other.mostNegativeMessage != null && other.averageScore < this.averageScore)) {
             this.mostNegativeMessage = other.mostNegativeMessage;
         }
 
@@ -83,20 +86,34 @@ public class SentimentAccumulator {
         }
     }
 
-    public long getStart() {
+    @Override
+    public String toString() {
+        var formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneId.systemDefault());
+        var startFormatted = formatter.format(Instant.ofEpochMilli(start));
+        var endFormatted = formatter.format(Instant.ofEpochMilli(end));
+
+        return String.format("SentimentAccumulator { start=%s, end=%s, averageScore=%.2f, result='%s', mostPositiveMessage='%s', mostNegativeMessage='%s', messageCount=%d }",
+                startFormatted, endFormatted, averageScore, result, mostPositiveMessage, mostNegativeMessage, messageCount);
+    }
+
+    public Object getStart() {
         return start;
     }
 
-    public long getEnd() {
+    public Object getEnd() {
         return end;
     }
 
-    public int getCount() {
+    public int getMessageCount() {
         return messageCount;
     }
 
     public double getAverageScore() {
         return averageScore;
+    }
+
+    public String getResult() {
+        return result;
     }
 
     public String getMostPositiveMessage() {
@@ -107,25 +124,11 @@ public class SentimentAccumulator {
         return mostNegativeMessage;
     }
 
-    public String getResult() {
-        return result;
-    }
-
     public void setStart(long start) {
         this.start = start;
     }
 
     public void setEnd(long end) {
         this.end = end;
-    }
-
-    @Override
-    public String toString() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneId.systemDefault());
-        String startFormatted = formatter.format(Instant.ofEpochMilli(start));
-        String endFormatted = formatter.format(Instant.ofEpochMilli(end));
-
-        return String.format("SentimentAccumulator{start=%s, end=%s, averageScore=%.2f, result='%s', mostPositiveMessage='%s', mostNegativeMessage='%s', messageCount=%d}",
-                startFormatted, endFormatted, averageScore, result, mostPositiveMessage, mostNegativeMessage, messageCount);
     }
 }

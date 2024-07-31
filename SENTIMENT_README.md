@@ -6,6 +6,7 @@ It uses:
 * **Kafka**, a distributed and highly scalable event streaming platform, to ingest the data.
 * **Flink**, a framework and distributed processing engine for stateful computations over unbounded and bounded data streams, to process the data.
 * **Stanford CoreNLP**, a suite of natural language processing tools, for performing sentiment analysis.
+* **GPT-4**: Enhances sentiment analysis with advanced natural language understanding, providing detailed sentiment summaries.
 * **Docker** and **Docker Compose** to deploy the services required by the project.
 
 ## System Design and Architecture
@@ -64,6 +65,38 @@ The Slack integration subproject is responsible for connecting to a specified Sl
 
 This will start the Slack connector, which listens to messages in the specified Slack channel and streams them to the `slack_messages` Kafka topic.
 
+## GPT-4 Integration
+
+The GPT-4 integration provides an advanced sentiment analysis layer to complement the Stanford CoreNLP. This is achieved by making API calls to OpenAI's GPT-4 model.
+
+### Setting Up GPT-4 Integration
+
+1. **API Key Configuration**: Ensure that your OpenAI API key is set up in your environment. This can be done by adding it to your `.env` file in the `real-time-infrastructure` directory.
+
+    ```
+    OPENAI_API_KEY=your-openai
+    ```
+2. **Deploy the Flink Job**: After setting up the API key, follow the instructions in the Flink Job section to build and deploy the job.
+
+## Example Results
+
+### Stanford CoreNLP Sentiment Analysis
+
+```plaintext
+SentimentAccumulator{start=2024-07-31T15:18:30, end=2024-07-31T15:19:30, averageScore=2.83, result='Positive', mostPositiveMessage='That was amazing!', mostNegativeMessage='Average, I think. I have seen better.', messageCount=5}
+```
+
+### GPT-4 Enhanced Sentiment Analysis
+
+```plaintext
+**Time Window:** 2024-07-31T15:18:30 - 2024-07-31T15:19:30  
+**Summary of Sentiment:**
+- **Overall Sentiment:** Positive  
+- **Most Positive Message:** "That was amazing!"  
+- **Most Negative Message:** "Average, I think. I have seen better."
+The overall sentiment of the messages processed during the time window is neutral. The tone of the messages indicates that the users found their experiences to be mediocre, with phrases highlighting that things were "ok," "fine," and "average," suggesting an absence of strong emotion or enthusiasm. While there isn't outright negativity, the language used hints at a sense of disappointment or lack of fulfillment, implying that they expected something better. 
+```
+
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
@@ -114,11 +147,6 @@ The `SentimentAnalysisFunction` class initializes the Stanford CoreNLP pipeline 
 
 The `createKafkaSink` method creates a Kafka sink that writes the sentiment analysis results back to Kafka.
 
-### Sample Result
-```plaintext
-SentimentAccumulator{start=2024-07-30T12:24:30, end=2024-07-30T12:25:30, averageScore=2.14, averageClass=Neutral, messageCount=7, mostPositiveMessage='Amazing!', mostNegativeMessage='Terrible, really really bad'}
-```
-
 ## Kafka
 
 ### Creating Producers Using the Console:
@@ -134,10 +162,13 @@ Timestamp: 1721903155.837829, User: U07DET2KZ2B, Message: I love this product!
 Timestamp: 1721903691.691959, User: U07DET2KZ2B, Message: This is terrible service!
 ```
 
-### Creating Consumer Using the Console:
+### Creating Consumers Using the Console:
 
 ```bash
-docker exec -it {container id} kafka-console-consumer --bootstrap-server localhost:9092 --topic sentiment_results --from-beginning
+docker exec -it {container id} kafka-console-consumer --bootstrap-server localhost:9092 --topic stanford_results --from-beginning
+```
+```bash
+docker exec -it {container id} kafka-console-consumer --bootstrap-server localhost:9092 --topic gpt4_results --from-beginning
 ```
 
 ### Listing Topics:

@@ -89,19 +89,19 @@ class StanfordSentimentAnalysisFunctionTest {
 
     @Test
     void testAddAndMerge() {
-        var aggregate = new SentimentAggregate();
-        var accumulator1 = new SentimentAccumulator();
-        var accumulator2 = new SentimentAccumulator();
+        var aggregate = new StanfordSentimentAggregator();
+        var accumulator1 = new StanfordSentimentAccumulator();
+        var accumulator2 = new StanfordSentimentAccumulator();
 
         var message1 = new SlackMessage(1721903155L, "U07DET2KZ2B", "Fantastic!");
         var message2 = new SlackMessage(1721903155L, "U07DET2KZ2B", "Awful!");
 
-        accumulator1.add(message1, new Tuple2<>(List.of(3), List.of("Positive")), 0, 0);
-        accumulator2.add(message2, new Tuple2<>(List.of(1), List.of("Negative")), 0, 0);
+        accumulator1.add(message1, new Tuple2<>(List.of(3), List.of("Positive")));
+        accumulator2.add(message2, new Tuple2<>(List.of(1), List.of("Negative")));
 
         var result = aggregate.merge(accumulator1, accumulator2);
 
-        assertEquals(2, result.getCount());
+        assertEquals(2, result.getMessageCount());
         assertEquals(2.0, result.getAverageScore(), 0.01);
         assertEquals("Neutral", result.getResult()); // Changed to "Neutral"
         assertEquals("Fantastic!", result.getMostPositiveMessage());
@@ -110,12 +110,12 @@ class StanfordSentimentAnalysisFunctionTest {
 
     @Test
     void testAddToAccumulator() {
-        var accumulator = new SentimentAccumulator();
+        var accumulator = new StanfordSentimentAccumulator();
         var message = new SlackMessage(1721903155L, "U07DET2KZ2B", "Fantastic!");
 
-        accumulator.add(message, new Tuple2<>(List.of(3), List.of("Positive")), 0, 0);
+        accumulator.add(message, new Tuple2<>(List.of(3), List.of("Positive")));
 
-        assertEquals(1, accumulator.getCount());
+        assertEquals(1, accumulator.getMessageCount());
         assertEquals(3.0, accumulator.getAverageScore(), 0.01);
         assertEquals("Positive", accumulator.getResult());
         assertEquals("Fantastic!", accumulator.getMostPositiveMessage());

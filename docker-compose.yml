@@ -44,6 +44,8 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
+    env_file:
+      - .env
     command: jobmanager
     networks:
       - flink-network
@@ -56,6 +58,8 @@ services:
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
         taskmanager.numberOfTaskSlots: 1
+    env_file:
+      - .env
     command: taskmanager
     depends_on:
       - jobmanager

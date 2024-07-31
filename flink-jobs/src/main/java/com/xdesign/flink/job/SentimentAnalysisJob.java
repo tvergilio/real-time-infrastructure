@@ -1,9 +1,6 @@
 package com.xdesign.flink.job;
 
-import com.xdesign.flink.processing.SentimentAggregate;
-import com.xdesign.flink.processing.SentimentAccumulator;
-import com.xdesign.flink.processing.StanfordSentimentAnalysisFunction;
-import com.xdesign.flink.processing.GPT4ProcessingFunction;
+import com.xdesign.flink.processing.*;
 import com.xdesign.flink.transfer.SlackMessageDeserializationSchema;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.base.DeliveryGuarantee;
@@ -46,19 +43,13 @@ public class SentimentAnalysisJob {
                 .name("Map: Stanford Sentiment Analysis")
                 .uid("map-stanford-sentiment-analysis");
 
-        // Perform sentiment analysis using GPT-4
-        var gpt4SentimentResultsStream = slackMessagesStream.map(new GPT4ProcessingFunction())
-                .startNewChain()
-                .name("Map: GPT-4 Sentiment Analysis")
-                .uid("map-gpt4-sentiment-analysis");
-
         // Apply sliding windows of 1 minute with slides of 30 seconds
         var stanfordWindowedStream = stanfordSentimentResultsStream
                 .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.seconds(30)))
-                .aggregate(new SentimentAggregate(), new ProcessAllWindowFunction<SentimentAccumulator, SentimentAccumulator, TimeWindow>() {
+                .aggregate(new StanfordSentimentAggregator(), new ProcessAllWindowFunction<StanfordSentimentAccumulator, StanfordSentimentAccumulator, TimeWindow>() {
                     @Override
-                    public void process(Context context, Iterable<SentimentAccumulator> elements, Collector<SentimentAccumulator> out) {
-                        SentimentAccumulator accumulator = elements.iterator().next();
+                    public void process(Context context, Iterable<StanfordSentimentAccumulator> elements, Collector<StanfordSentimentAccumulator> out) {
+                        StanfordSentimentAccumulator accumulator = elements.iterator().next();
                         accumulator.setStart(context.window().getStart());
                         accumulator.setEnd(context.window().getEnd());
                         out.collect(accumulator);
@@ -68,28 +59,20 @@ public class SentimentAnalysisJob {
                 .name("Aggregate: Stanford Windowed Sentiment Analysis")
                 .uid("aggregate-stanford-windowed-sentiment-analysis");
 
-        var gpt4WindowedStream = gpt4SentimentResultsStream
+        // Perform sentiment analysis using the GPT-4 LLM model
+        var gpt4WindowedStream = slackMessagesStream
                 .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.seconds(30)))
-                .aggregate(new SentimentAggregate(), new ProcessAllWindowFunction<SentimentAccumulator, SentimentAccumulator, TimeWindow>() {
-                    @Override
-                    public void process(Context context, Iterable<SentimentAccumulator> elements, Collector<SentimentAccumulator> out) {
-                        SentimentAccumulator accumulator = elements.iterator().next();
-                        accumulator.setStart(context.window().getStart());
-                        accumulator.setEnd(context.window().getEnd());
-                        out.collect(accumulator);
-                    }
-                })
-                .startNewChain()
+                .aggregate(new SlackMessageAggregator(), new GPT4WindowProcessingFunction(new GPT4ProcessingFunction()))
                 .name("Aggregate: GPT-4 Windowed Sentiment Analysis")
                 .uid("aggregate-gpt4-windowed-sentiment-analysis");
 
         // Convert the results to JSON format
-        var stanfordJsonResultsStream = stanfordWindowedStream.map(value -> value.toString())
+        var stanfordJsonResultsStream = stanfordWindowedStream.map(StanfordSentimentAccumulator::toString)
                 .startNewChain()
                 .name("Map: Convert Stanford to JSON")
                 .uid("map-convert-stanford-to-json");
 
-        var gpt4JsonResultsStream = gpt4WindowedStream.map(value -> value.toString())
+        var gpt4JsonResultsStream = gpt4WindowedStream.map(GPT4SentimentAccumulator::toString)
                 .startNewChain()
                 .name("Map: Convert GPT-4 to JSON")
                 .uid("map-convert-gpt4-to-json");

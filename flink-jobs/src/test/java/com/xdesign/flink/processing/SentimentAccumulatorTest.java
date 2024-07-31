@@ -12,12 +12,12 @@ class SentimentAccumulatorTest {
 
     @Test
     void testAdd() {
-        var accumulator = new SentimentAccumulator();
+        var accumulator = new StanfordSentimentAccumulator();
         var message = new SlackMessage(1721903155L, "U07DET2KZ2B", "Fantastic!");
 
-        accumulator.add(message, new Tuple2<>(List.of(3), List.of("Positive")), 0, 0);
+        accumulator.add(message, new Tuple2<>(List.of(3), List.of("Positive")));
 
-        assertEquals(1, accumulator.getCount());
+        assertEquals(1, accumulator.getMessageCount());
         assertEquals(3.0, accumulator.getAverageScore(), 0.01);
         assertEquals("Positive", accumulator.getResult());
         assertEquals("Fantastic!", accumulator.getMostPositiveMessage());
@@ -25,18 +25,18 @@ class SentimentAccumulatorTest {
 
     @Test
     void testMerge() {
-        var accumulator1 = new SentimentAccumulator();
-        var accumulator2 = new SentimentAccumulator();
+        var accumulator1 = new StanfordSentimentAccumulator();
+        var accumulator2 = new StanfordSentimentAccumulator();
 
         var message1 = new SlackMessage(1721903155L, "U07DET2KZ4P", "Fantastic!");
         var message2 = new SlackMessage(1721903155L, "U07DET2KZ4P", "Awful!");
 
-        accumulator1.add(message1, new Tuple2<>(List.of(3), List.of("Positive")), 0, 0);
-        accumulator2.add(message2, new Tuple2<>(List.of(1), List.of("Negative")), 0, 0);
+        accumulator1.add(message1, new Tuple2<>(List.of(3), List.of("Positive")));
+        accumulator2.add(message2, new Tuple2<>(List.of(1), List.of("Negative")));
 
         accumulator1.merge(accumulator2);
 
-        assertEquals(2, accumulator1.getCount());
+        assertEquals(2, accumulator1.getMessageCount());
         assertEquals(2.0, accumulator1.getAverageScore(), 0.01);
         assertEquals("Neutral", accumulator1.getResult());
         assertEquals("Fantastic!", accumulator1.getMostPositiveMessage());
