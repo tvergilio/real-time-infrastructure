@@ -85,14 +85,18 @@ public class GPT4SentimentProcessFunction extends ProcessAllWindowFunction<Slack
                         "Window Start: %s\n" +
                         "Window End: %s\n" +
                         "Messages Processed: %d\n\nMessages:\n%s\n\n" +
-                        "Then, provide the following structured summary:\n\n" +
-                        "**Time Window:** %s - %s\n" +
-                        "**Summary of Sentiment:**\n" +
-                        "- **Overall Sentiment:** [Overall Sentiment]\n" +
-                        "- **Most Positive Message:** [Most Positive Message]\n" +
-                        "- **Most Negative Message:** [Most Negative Message]\n" +
-                        "- **Message Count:** [Message Count]\n\n" +
-                        "Finally, ensure the descriptive paragraph is included.",
+                        "Provide your answer in JSON format, as per the following structure:\n\n" +
+                        "{\n" +
+                        "  \"Time Window\": \"[Start Time] - [End Time]\",\n" +
+                        "  \"Summary of Sentiment\": {\n" +
+                        "    \"Overall Sentiment\": \"[Overall Sentiment]\",\n" +
+                        "    \"Most Positive Message\": \"[Most Positive Message]\",\n" +
+                        "    \"Most Negative Message\": \"[Most Negative Message]\",\n" +
+                        "    \"Message Count\": [Message Count]\n" +
+                        "  },\n" +
+                        "  \"Descriptive Paragraph\": \"[Descriptive Paragraph]\"\n" +
+                        "}\n\n" +
+                        "Ensure that your answer is in JSON format, the JSON object is properly formatted and includes all the required fields.",
                 startFormatted, endFormatted, messages.size(),
                 messages.stream().map(SlackMessage::getMessage).collect(Collectors.joining("\n- ", "- ", "")),
                 startFormatted, endFormatted
