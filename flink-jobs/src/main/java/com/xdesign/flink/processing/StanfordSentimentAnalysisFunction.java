@@ -23,7 +23,7 @@ public class StanfordSentimentAnalysisFunction extends RichMapFunction<SlackMess
 
     @Override
     public void open(Configuration configuration) {
-        Properties properties = new Properties();
+        var properties = new Properties();
         properties.setProperty("annotators", "tokenize, ssplit, parse, sentiment");
         pipeline = new StanfordCoreNLP(properties);
     }
@@ -33,7 +33,7 @@ public class StanfordSentimentAnalysisFunction extends RichMapFunction<SlackMess
         return new Tuple2<>(slackMessage, getSentiment(slackMessage.getMessage()));
     }
 
-    private Tuple2<List<Integer>, List<String>> getSentiment(String message) {
+    public Tuple2<List<Integer>, List<String>> getSentiment(String message) {
         List<Integer> scores = new ArrayList<>();
         List<String> classes = new ArrayList<>();
 
@@ -42,11 +42,11 @@ public class StanfordSentimentAnalysisFunction extends RichMapFunction<SlackMess
         }
 
         if (message != null && !message.isEmpty()) {
-            Annotation annotation = pipeline.process(message);
+            var annotation = pipeline.process(message);
 
             annotation.get(SentencesAnnotation.class).forEach(sentence -> {
                 // sentiment score
-                Tree tree = sentence.get(SentimentAnnotatedTree.class);
+                var tree = sentence.get(SentimentAnnotatedTree.class);
                 scores.add(getPredictedClass(tree));
 
                 // sentiment class

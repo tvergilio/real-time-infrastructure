@@ -1,34 +1,41 @@
 package com.xdesign.flink.processing;
 
-import com.xdesign.flink.model.GPT4Response;
 import com.xdesign.flink.model.SlackMessage;
-import okhttp3.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import okhttp3.*;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
+import org.apache.flink.util.Collector;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class GPT4ProcessingFunction implements Serializable {
+public class GPT4SentimentProcessFunction extends ProcessAllWindowFunction<SlackMessage, GPT4SentimentAccumulator, TimeWindow> {
 
-    static final String API_URL = "https://api.openai.com/v1/chat/completions";
-    private final String apiKey;
     private transient OkHttpClient client;
     private transient ObjectMapper objectMapper;
+    private final String apiKey;
+    private final String model;
 
-    public GPT4ProcessingFunction() {
+    public GPT4SentimentProcessFunction() {
         this.apiKey = System.getenv("OPENAI_API_KEY");
+        this.model = System.getenv("OPENAI_MODEL");
         if (this.apiKey == null) {
             throw new IllegalStateException("OpenAI API key must be set in the environment variables");
+        } else if (this.model == null) {
+            throw new IllegalStateException("OpenAI model must be set in the environment variables");
         }
     }
 
-    private void initialise() {
+    @Override
+    public void open(Configuration parameters) {
         if (client == null) {
             client = new OkHttpClient();
         }
@@ -37,12 +44,33 @@ public class GPT4ProcessingFunction implements Serializable {
         }
     }
 
-    public GPT4SentimentAccumulator map(List<SlackMessage> messages, long windowStart, long windowEnd) throws IOException {
-        initialise();
+    @Override
+    public void process(Context context, Iterable<SlackMessage> elements, Collector<GPT4SentimentAccumulator> out) throws Exception {
+
+        if (!elements.iterator().hasNext()) {
+            return; // Skip processing if no messages are in the window
+        }
+
+        List<SlackMessage> messages = new ArrayList<>();
+        for (SlackMessage message : elements) {
+            messages.add(message);
+        }
+
+        long windowStart = context.window().getStart();
+        long windowEnd = context.window().getEnd();
+
+        var accumulator = analyzeSentiment(messages, windowStart, windowEnd);
+        accumulator.setStart(windowStart);
+        accumulator.setEnd(windowEnd);
+
+        out.collect(accumulator);
+    }
+
+    private GPT4SentimentAccumulator analyzeSentiment(List<SlackMessage> messages, long windowStart, long windowEnd) throws IOException {
         var prompt = createPrompt(messages, windowStart, windowEnd);
-        var gpt4Response = callGPT4API(prompt);
-        var resultText = gpt4Response.getChoices().get(0).getMessage().getContent().trim();
-        return new GPT4SentimentAccumulator(resultText);
+        var response = callGPT4API(prompt);
+
+        return new GPT4SentimentAccumulator(response);
     }
 
     private String createPrompt(List<SlackMessage> messages, long windowStart, long windowEnd) {
@@ -71,35 +99,28 @@ public class GPT4ProcessingFunction implements Serializable {
         );
     }
 
-    private GPT4Response callGPT4API(String prompt) throws IOException {
-        initialise();
-
+    private String callGPT4API(String prompt) throws IOException {
         var jsonRequest = objectMapper.writeValueAsString(Map.of(
-                "model", "gpt-4o-mini",
+                "model", model,
                 "messages", List.of(
                         Map.of("role", "system", "content", "You are a helpful assistant."),
                         Map.of("role", "user", "content", prompt)
                 )
         ));
 
-        // Create the request body
         var body = RequestBody.create(jsonRequest, MediaType.get("application/json; charset=utf-8"));
 
-        // Build the request
         var request = new Request.Builder()
-                .url(API_URL)
+                .url("https://api.openai.com/v1/chat/completions")
                 .header("Authorization", "Bearer " + apiKey)
-                .header("Content-Type", "application/json")
                 .post(body)
                 .build();
 
-        // Execute the request and handle the response
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 throw new IOException("Unexpected code " + response);
             }
-            var responseBody = response.body().string();
-            return objectMapper.readValue(responseBody, GPT4Response.class);
+            return response.body().string();
         }
     }
 }

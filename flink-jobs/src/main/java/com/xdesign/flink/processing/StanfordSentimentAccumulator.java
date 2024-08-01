@@ -11,15 +11,15 @@ import java.util.List;
 
 public class StanfordSentimentAccumulator {
 
+    private final List<Integer> scores;
+    private final List<String> classes;
     private long start;
     private long end;
     private double averageScore;
     private String result;
-    private String mostPositiveMessage;
-    private String mostNegativeMessage;
+    private SlackMessage mostPositiveMessage;
+    private SlackMessage mostNegativeMessage;
     private int messageCount;
-    private List<Integer> scores;
-    private List<String> classes;
 
     public StanfordSentimentAccumulator() {
         this.scores = new ArrayList<>();
@@ -28,48 +28,58 @@ public class StanfordSentimentAccumulator {
     }
 
     public void add(SlackMessage message, Tuple2<List<Integer>, List<String>> sentiment) {
-        this.scores.addAll(sentiment.f0);
-        this.classes.addAll(sentiment.f1);
-        this.messageCount++;
+        scores.addAll(sentiment.f0);
+        classes.addAll(sentiment.f1);
+        messageCount++;
 
-        if (this.mostPositiveMessage == null || sentiment.f0.get(0) > this.averageScore) {
-            this.mostPositiveMessage = message.getMessage();
+        int maxScore = sentiment.f0.stream().max(Integer::compareTo).orElse(Integer.MIN_VALUE);
+        int minScore = sentiment.f0.stream().min(Integer::compareTo).orElse(Integer.MAX_VALUE);
+
+        // Update the most positive message
+        if (mostPositiveMessage == null || maxScore > getMaxScore() ||
+                (maxScore == getMaxScore() && message.getMessage().length() > mostPositiveMessage.getMessage().length())) {
+            mostPositiveMessage = message;
         }
-        if (this.mostNegativeMessage == null || sentiment.f0.get(0) < this.averageScore) {
-            this.mostNegativeMessage = message.getMessage();
+
+        // Update the most negative message
+        if (mostNegativeMessage == null || minScore < getMinScore() ||
+                (minScore == getMinScore() && message.getMessage().length() < mostNegativeMessage.getMessage().length())) {
+            mostNegativeMessage = message;
         }
 
-        // Calculate average score
-        this.averageScore = this.scores
-                .stream()
-                .mapToInt(Integer::intValue)
-                .average()
-                .orElse(0.0);
-
-        // Set result based on the average score
-        this.result = classifySentiment(this.averageScore);
+        updateAverageScore();
+        result = classifySentiment(averageScore);
     }
 
     public void merge(StanfordSentimentAccumulator other) {
-        int totalMessages = this.messageCount + other.messageCount;
-        double totalScore = (this.averageScore * this.messageCount + other.averageScore * other.messageCount);
+        scores.addAll(other.scores);
+        classes.addAll(other.classes);
+        messageCount += other.messageCount;
 
-        this.scores.addAll(other.scores);
-        this.classes.addAll(other.classes);
-        this.messageCount = totalMessages;
+        updateAverageScore();
 
-        this.averageScore = totalScore / totalMessages;
-
-        // Retain the most positive and most negative messages
-        if (this.mostPositiveMessage == null || (other.mostPositiveMessage != null && other.averageScore > this.averageScore)) {
+        // Retain the most positive message based on score and length of the message
+        if (this.mostPositiveMessage == null ||
+                (other.mostPositiveMessage != null &&
+                        (other.getMaxScore() > this.getMaxScore() ||
+                                (other.getMaxScore() == this.getMaxScore() && other.mostPositiveMessage.getMessage().length() > this.mostPositiveMessage.getMessage().length())))) {
             this.mostPositiveMessage = other.mostPositiveMessage;
         }
-        if (this.mostNegativeMessage == null || (other.mostNegativeMessage != null && other.averageScore < this.averageScore)) {
+
+        // Retain the most negative message based on score and length of the message
+        if (this.mostNegativeMessage == null ||
+                (other.mostNegativeMessage != null &&
+                        (other.getMinScore() < this.getMinScore() ||
+                                (other.getMinScore() == this.getMinScore() && other.mostNegativeMessage.getMessage().length() < this.mostNegativeMessage.getMessage().length())))) {
             this.mostNegativeMessage = other.mostNegativeMessage;
         }
 
         // Set result based on the new average score
         this.result = classifySentiment(this.averageScore);
+    }
+
+    private void updateAverageScore() {
+        averageScore = scores.stream().mapToInt(Integer::intValue).average().orElse(0.0);
     }
 
     private String classifySentiment(double averageScore) {
@@ -86,6 +96,14 @@ public class StanfordSentimentAccumulator {
         }
     }
 
+    private int getMaxScore() {
+        return scores.stream().max(Integer::compareTo).orElse(Integer.MIN_VALUE);
+    }
+
+    private int getMinScore() {
+        return scores.stream().min(Integer::compareTo).orElse(Integer.MAX_VALUE);
+    }
+
     @Override
     public String toString() {
         var formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneId.systemDefault());
@@ -93,15 +111,26 @@ public class StanfordSentimentAccumulator {
         var endFormatted = formatter.format(Instant.ofEpochMilli(end));
 
         return String.format("SentimentAccumulator { start=%s, end=%s, averageScore=%.2f, result='%s', mostPositiveMessage='%s', mostNegativeMessage='%s', messageCount=%d }",
-                startFormatted, endFormatted, averageScore, result, mostPositiveMessage, mostNegativeMessage, messageCount);
+                startFormatted, endFormatted, averageScore, result,
+                mostPositiveMessage != null ? mostPositiveMessage.getMessage() : "N/A",
+                mostNegativeMessage != null ? mostNegativeMessage.getMessage() : "N/A",
+                messageCount);
     }
 
-    public Object getStart() {
+    public long getStart() {
         return start;
     }
 
-    public Object getEnd() {
+    public void setStart(long start) {
+        this.start = start;
+    }
+
+    public long getEnd() {
         return end;
+    }
+
+    public void setEnd(long end) {
+        this.end = end;
     }
 
     public int getMessageCount() {
@@ -117,18 +146,11 @@ public class StanfordSentimentAccumulator {
     }
 
     public String getMostPositiveMessage() {
-        return mostPositiveMessage;
+        return mostPositiveMessage != null ? mostPositiveMessage.getMessage() : null;
     }
 
     public String getMostNegativeMessage() {
-        return mostNegativeMessage;
-    }
-
-    public void setStart(long start) {
-        this.start = start;
-    }
-
-    public void setEnd(long end) {
-        this.end = end;
+        return mostNegativeMessage != null ? mostNegativeMessage.getMessage() : null;
     }
 }
+

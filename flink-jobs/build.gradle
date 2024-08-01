@@ -6,7 +6,7 @@ plugins {
 }
 // artifact properties
 group = 'com.xdesign'
-version = '2.0'
+version = '3.0'
 mainClassName = 'com.xdesign.flink.job.SentimentAnalysisJob'
 description = """Flink job to calculate the sentiment of a Slack messages using a pre-trained model."""
 ext {

@@ -7,12 +7,9 @@ import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
-import org.apache.flink.util.Collector;
 
 import java.util.Properties;
 
@@ -31,59 +28,50 @@ public class SentimentAnalysisJob {
     }
 
     public static void run(StreamExecutionEnvironment env, Properties kafkaProperties) throws Exception {
+        // Disable operator chaining for better visualisation
+        env.disableOperatorChaining();
+
         // Consumer for reading Slack messages
         var slackMessagesConsumer = new FlinkKafkaConsumer<>("slack_messages", new SlackMessageDeserializationSchema(), kafkaProperties);
         var slackMessagesStream = env.addSource(slackMessagesConsumer)
                 .name("Kafka Source: Slack Messages")
                 .uid("kafka-source-slack-messages");
 
-        // Perform sentiment analysis using the Stanford NLP model
-        var stanfordSentimentResultsStream = slackMessagesStream.map(new StanfordSentimentAnalysisFunction())
-                .startNewChain()
-                .name("Map: Stanford Sentiment Analysis")
-                .uid("map-stanford-sentiment-analysis");
+        // Apply windowing function
+        var windowedStream = slackMessagesStream
+                .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(2), Time.minutes(1)));
 
-        // Apply sliding windows of 1 minute with slides of 30 seconds
-        var stanfordWindowedStream = stanfordSentimentResultsStream
-                .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.seconds(30)))
-                .aggregate(new StanfordSentimentAggregator(), new ProcessAllWindowFunction<StanfordSentimentAccumulator, StanfordSentimentAccumulator, TimeWindow>() {
-                    @Override
-                    public void process(Context context, Iterable<StanfordSentimentAccumulator> elements, Collector<StanfordSentimentAccumulator> out) {
-                        StanfordSentimentAccumulator accumulator = elements.iterator().next();
-                        accumulator.setStart(context.window().getStart());
-                        accumulator.setEnd(context.window().getEnd());
-                        out.collect(accumulator);
-                    }
-                })
-                .startNewChain()
-                .name("Aggregate: Stanford Windowed Sentiment Analysis")
-                .uid("aggregate-stanford-windowed-sentiment-analysis");
+        // Stanford Sentiment Analysis
+        var stanfordSentimentResultsStream = windowedStream
+                .process(new StanfordSentimentProcessFunction())
+                .name("Stanford Sentiment Analysis")
+                .uid("stanford-sentiment-analysis");
 
-        // Perform sentiment analysis using the GPT-4 LLM model
-        var gpt4WindowedStream = slackMessagesStream
-                .windowAll(SlidingProcessingTimeWindows.of(Time.minutes(1), Time.seconds(30)))
-                .aggregate(new SlackMessageAggregator(), new GPT4WindowProcessingFunction(new GPT4ProcessingFunction()))
-                .name("Aggregate: GPT-4 Windowed Sentiment Analysis")
-                .uid("aggregate-gpt4-windowed-sentiment-analysis");
+        // GPT-4 Sentiment Analysis
+        var gpt4SentimentResultsStream = windowedStream
+                .process(new GPT4SentimentProcessFunction())
+                .name("GPT-4 Sentiment Analysis")
+                .uid("gpt4-sentiment-analysis");
 
-        // Convert the results to JSON format
-        var stanfordJsonResultsStream = stanfordWindowedStream.map(StanfordSentimentAccumulator::toString)
-                .startNewChain()
-                .name("Map: Convert Stanford to JSON")
+        // Convert the Stamford results to JSON format
+        var stanfordJsonResultsStream = stanfordSentimentResultsStream
+                .map(StanfordSentimentAccumulator::toString)
+                .name("Convert Stanford to JSON")
                 .uid("map-convert-stanford-to-json");
 
-        var gpt4JsonResultsStream = gpt4WindowedStream.map(GPT4SentimentAccumulator::toString)
-                .startNewChain()
-                .name("Map: Convert GPT-4 to JSON")
-                .uid("map-convert-gpt4-to-json");
+        // Convert the GPT-4 results (extract content)
+        var gpt4OutputResultsStream = gpt4SentimentResultsStream
+                .map(GPT4SentimentAccumulator::getContent)
+                .name("Extract GPT-4 Content")
+                .uid("map-extract-gpt4-content");
 
         // Sink the results to different Kafka topics
         stanfordJsonResultsStream.sinkTo(createKafkaSink(kafkaProperties.getProperty("bootstrap.servers"), "stanford_results"))
-                .name("Kafka Sink: Stanford Sentiment Results")
+                .name("Sink Stanford Results to Kafka")
                 .uid("kafka-sink-stanford-sentiment-results");
 
-        gpt4JsonResultsStream.sinkTo(createKafkaSink(kafkaProperties.getProperty("bootstrap.servers"), "gpt4_results"))
-                .name("Kafka Sink: GPT-4 Sentiment Results")
+        gpt4OutputResultsStream.sinkTo(createKafkaSink(kafkaProperties.getProperty("bootstrap.servers"), "gpt4_results"))
+                .name("Sink GPT-4 Results to Kafka")
                 .uid("kafka-sink-gpt4-sentiment-results");
 
         env.execute("Sentiment Comparison Job");
