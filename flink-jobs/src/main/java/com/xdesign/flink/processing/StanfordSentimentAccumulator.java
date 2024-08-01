@@ -1,5 +1,7 @@
 package com.xdesign.flink.processing;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xdesign.flink.model.SlackMessage;
 import org.apache.flink.api.java.tuple.Tuple2;
 
@@ -106,15 +108,30 @@ public class StanfordSentimentAccumulator {
 
     @Override
     public String toString() {
+        var mapper = new ObjectMapper();
+        var jsonNode = mapper.createObjectNode();
+
+        // Formatting dates
         var formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneId.systemDefault());
         var startFormatted = formatter.format(Instant.ofEpochMilli(start));
         var endFormatted = formatter.format(Instant.ofEpochMilli(end));
 
-        return String.format("SentimentAccumulator { start=%s, end=%s, averageScore=%.2f, result='%s', mostPositiveMessage='%s', mostNegativeMessage='%s', messageCount=%d }",
-                startFormatted, endFormatted, averageScore, result,
-                mostPositiveMessage != null ? mostPositiveMessage.getMessage() : "N/A",
-                mostNegativeMessage != null ? mostNegativeMessage.getMessage() : "N/A",
-                messageCount);
+        // Construct JSON object
+        jsonNode.put("start", startFormatted);
+        jsonNode.put("end", endFormatted);
+        jsonNode.put("averageScore", averageScore);
+        jsonNode.put("result", result);
+        jsonNode.put("mostPositiveMessage", mostPositiveMessage != null ? mostPositiveMessage.getMessage() : "N/A");
+        jsonNode.put("mostNegativeMessage", mostNegativeMessage != null ? mostNegativeMessage.getMessage() : "N/A");
+        jsonNode.put("messageCount", messageCount);
+
+        // Convert JSON object to string
+        try {
+            return mapper.writeValueAsString(jsonNode);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+            return "{}";
+        }
     }
 
     public long getStart() {

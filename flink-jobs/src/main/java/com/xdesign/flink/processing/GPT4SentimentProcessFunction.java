@@ -96,7 +96,8 @@ public class GPT4SentimentProcessFunction extends ProcessAllWindowFunction<Slack
                         "  },\n" +
                         "  \"Descriptive Paragraph\": \"[Descriptive Paragraph]\"\n" +
                         "}\n\n" +
-                        "Ensure that your answer is in JSON format, the JSON object is properly formatted and includes all the required fields.",
+                        "Ensure that your answer is in JSON format, the JSON object is properly formatted and includes " +
+                        "all the required fields. Do not include ```json or ``` around your response.\n\n",
                 startFormatted, endFormatted, messages.size(),
                 messages.stream().map(SlackMessage::getMessage).collect(Collectors.joining("\n- ", "- ", "")),
                 startFormatted, endFormatted
