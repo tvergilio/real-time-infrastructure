@@ -80,6 +80,15 @@ services:
     networks:
       - kafka-network
 
+  flask-consumer:
+    build: ./python/flask-consumer
+    ports:
+      - "5001:5001"
+    depends_on:
+      - kafka
+    networks:
+      - kafka-network
+
 networks:
   flink-network:
     driver: bridge

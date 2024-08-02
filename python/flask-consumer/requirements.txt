@@ -1,0 +1,5 @@
+flask
+confluent-kafka
+kafka-python
+flask-socketio
+
