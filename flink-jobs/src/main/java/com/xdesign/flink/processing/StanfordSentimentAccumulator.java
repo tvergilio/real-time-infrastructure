@@ -37,15 +37,13 @@ public class StanfordSentimentAccumulator {
         int maxScore = value.f0.stream().max(Integer::compareTo).orElse(Integer.MIN_VALUE);
         int minScore = value.f0.stream().min(Integer::compareTo).orElse(Integer.MAX_VALUE);
 
-        // Update the most positive message
-        if (mostPositiveMessage == null || maxScore > getMaxScore() ||
-                (maxScore == getMaxScore() && message.getMessage().length() > mostPositiveMessage.getMessage().length())) {
+        // Only consider messages as positive if they have a distinctly positive score
+        if (maxScore > 2.5 && (mostPositiveMessage == null || maxScore > getMaxScore())) {
             mostPositiveMessage = message;
         }
 
-        // Update the most negative message
-        if (mostNegativeMessage == null || minScore < getMinScore() ||
-                (minScore == getMinScore() && message.getMessage().length() < mostNegativeMessage.getMessage().length())) {
+        // Only consider messages as negative if they have a distinctly negative score
+        if (minScore < 1.5 && (mostNegativeMessage == null || minScore < getMinScore())) {
             mostNegativeMessage = message;
         }
 
@@ -60,23 +58,22 @@ public class StanfordSentimentAccumulator {
 
         updateAverageScore();
 
-        // Retain the most positive message based on score and length of the message
-        if (this.mostPositiveMessage == null ||
-                (other.mostPositiveMessage != null &&
-                        (other.getMaxScore() > this.getMaxScore() ||
-                                (other.getMaxScore() == this.getMaxScore() && other.mostPositiveMessage.getMessage().length() > this.mostPositiveMessage.getMessage().length())))) {
-            this.mostPositiveMessage = other.mostPositiveMessage;
+        // Merge the most positive messages with stricter conditions
+        if (other.mostPositiveMessage != null && other.getMaxScore() > 2.5) {
+            if (this.mostPositiveMessage == null ||
+                    other.getMaxScore() > this.getMaxScore()) {
+                this.mostPositiveMessage = other.mostPositiveMessage;
+            }
         }
 
-        // Retain the most negative message based on score and length of the message
-        if (this.mostNegativeMessage == null ||
-                (other.mostNegativeMessage != null &&
-                        (other.getMinScore() < this.getMinScore() ||
-                                (other.getMinScore() == this.getMinScore() && other.mostNegativeMessage.getMessage().length() < this.mostNegativeMessage.getMessage().length())))) {
-            this.mostNegativeMessage = other.mostNegativeMessage;
+        // Merge the most negative messages with stricter conditions
+        if (other.mostNegativeMessage != null && other.getMinScore() < 1.5) {
+            if (this.mostNegativeMessage == null ||
+                    other.getMinScore() < this.getMinScore()) {
+                this.mostNegativeMessage = other.mostNegativeMessage;
+            }
         }
 
-        // Set sentiment based on the new average score
         sentiment = classifySentiment(this.averageScore);
     }
 
@@ -85,16 +82,16 @@ public class StanfordSentimentAccumulator {
     }
 
     private String classifySentiment(double averageScore) {
-        if (averageScore >= 3.5) {
-            return "Very positive";
-        } else if (averageScore >= 2.5) {
-            return "Positive";
-        } else if (averageScore >= 1.5) {
-            return "Neutral";
-        } else if (averageScore >= 0.5) {
-            return "Negative";
+        if (averageScore >= 4.0) {
+            return "very positive";
+        } else if (averageScore >= 3.0) {
+            return "positive";
+        } else if (averageScore >= 2.0) {
+            return "neutral";
+        } else if (averageScore >= 1.0) {
+            return "negative";
         } else {
-            return "Very negative";
+            return "very negative";
         }
     }
 
@@ -115,12 +112,10 @@ public class StanfordSentimentAccumulator {
         var mapper = new ObjectMapper();
         var jsonNode = mapper.createObjectNode();
 
-        // Formatting dates
         var formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.of("Europe/London"));
         var startFormatted = formatter.format(Instant.ofEpochMilli(start));
         var endFormatted = formatter.format(Instant.ofEpochMilli(end));
 
-        // Construct JSON object
         jsonNode.put("start", startFormatted);
         jsonNode.put("end", endFormatted);
         jsonNode.put("overallSentiment", sentiment);
@@ -129,7 +124,6 @@ public class StanfordSentimentAccumulator {
         jsonNode.put("messageCount", messageCount);
         jsonNode.put("averageScore", Double.parseDouble(String.format("%.2f", averageScore)));
 
-        // Convert JSON object to string
         try {
             return mapper.writeValueAsString(jsonNode);
         } catch (JsonProcessingException e) {
@@ -174,4 +168,3 @@ public class StanfordSentimentAccumulator {
         return mostNegativeMessage != null ? mostNegativeMessage.getMessage() : null;
     }
 }
-
