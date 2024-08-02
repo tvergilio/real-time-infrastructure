@@ -80,10 +80,10 @@ services:
     networks:
       - kafka-network
 
-  flask-consumer:
-    build: ./python/flask-consumer
+  websocket-consumer:
+    build: ./websocket-consumer
     ports:
-      - "5001:5001"
+      - "8080:8080"
     depends_on:
       - kafka
     networks:
