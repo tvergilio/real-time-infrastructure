@@ -1,133 +1,110 @@
-# Real-Time Restaurant Relevance Calculator
+# Real-Time Sentiment Analysis
 
-This project calculates the relevance of restaurants in real time based on views and likes.
-This information is useful for applications that need to know which restaurants are currently trending.
+This project sets up a real-time sentiment analysis pipeline for processing messages from Slack. The implementation focuses on establishing the Kafka infrastructure, defining the data flow, integrating Slack to stream messages into Kafka, performing sentiment analysis using the Stanford CoreNLP library, and leveraging GPT-4 for advanced sentiment analysis.
 
 It uses:
-* **Kafka**, a distributed and highly scalable event streaming platform, to ingest the data.
-* **Flink**, a framework and distributed processing engine for stateful computations over unbounded and bounded data streams, to process the data.
-* **Zookeeper**, a centralised service for maintaining configuration information, naming, providing distributed synchronisation, and providing group services.
-* **Docker** and **Docker Compose** to deploy the services required by the project.
-* **Redis**, an in-memory data store, used as a cache to store the restaurant relevance data.
+* **Kafka**: A distributed and highly scalable event streaming platform for ingesting data.
+* **Flink**: A framework and distributed processing engine for stateful computations over unbounded and bounded data streams, to process the data.
+* **Stanford CoreNLP**: A suite of natural language processing tools for performing sentiment analysis.
+* **GPT-4**: Enhances sentiment analysis with advanced natural language understanding, providing detailed sentiment summaries.
+* **Docker** and **Docker Compose**: To deploy the services required by the project.
+* **WebSocket and Express (Node.js)**: To create a real-time frontend that displays the sentiment analysis results.
 
 ## System Design and Architecture
-This system is designed to be scalable and handle high velocity data streams. It leverages state-of-the-art streaming technology: Kafka for data ingestion, Flink for data processing, and Redis to cache a sorted set of trending restaurants.
-It dynamically updates every 30 seconds based on relevance scores calculated by the Flink job, providing real-time information about trending restaurants.
 
-The more traffic is expected, the lower the window size should be to provide more up-to-date information (windows are currently set to a very short duration for demonstration purposes).
+This system is designed to be scalable and handle high-velocity data streams. It leverages Kafka for data ingestion and Flink for data processing.
 
 ### System Components
-![architecture.png](assets/images/architecture.png)
+
+1. **Slack Integration**: Streams messages from Slack into Kafka.
+2. **Flink Job**: Processes messages for sentiment analysis using Stanford CoreNLP and GPT-4.
+3. **WebSocket Server**: Streams processed sentiment analysis results to the frontend in real time.
+4. **Frontend**: Displays sentiment analysis results in real-time.
 
 ### Data Processing Flow
-![flink.png](assets/images/flink.png)
 
-## Getting Started
+![flink-sentiment.png](assets/images/flink-sentiment.png)
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+## Setting Up and Running the Project
 
 ### Prerequisites
 
-- Java 8 or higher
-- Gradle
-- Docker
+- Docker and Docker Compose installed on your machine.
 
-## Deploying the infrastructure
+### Clone the Repository
 
-The project uses Docker for easy deployment. The `docker-compose.yml` file contains the configuration for the services required by the project, including Zookeeper, Kafka, Redis, and Flink's JobManager and TaskManager.
+```bash
+git clone https://github.com/tvergilio/real-time-infrastructure.git
+cd real-time-infrastructure
+```
 
-To deploy the project, run `docker-compose up` in the project directory.
+### Environment Configuration
 
-## Creating the Kafka topics
+1. **Configure Slack and GPT-4**: Update the `.env` file with your Slack API token, channel ID, and OpenAI API key.
+
+   ```
+   SLACK_API_TOKEN=your-slack-api-token
+   SLACK_CHANNEL_ID=your-slack-channel-id
+   OPENAI_API_KEY=your-openai-api-key
+   ```
+
+### Deploy the Infrastructure
+
+1. **Build and Run the Docker Containers**:
+
+   ```bash
+   docker-compose up --build
+   ```
+
+   This command will start the entire stack, including Zookeeper, Kafka, Flink, Redis, Slack Producer, and the WebSocket Consumer.
+
+### Creating Kafka Topics
+
 Run the following commands to create the Kafka topics required by the project:
-```bash
-docker-compose exec kafka kafka-topics --create --topic restaurant_views --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
-
-docker-compose exec kafka kafka-topics --create --topic restaurant_likes --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
-
-docker-compose exec kafka kafka-topics --create --topic restaurant_relevance --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
-```    
-
-## Flink Job
-
-### Building the Flink job
-1. Clone the repository to your local machine.
-2. Navigate to the flink-jobs directory.
-3. Run `./gradlew clean shadowJar` to build the project.
-
-### Running the Flink job
-1. Navigate to the Flink dashboard at http://localhost:8081
-2. Click on "Submit new job" and upload the JAR file located in the `flink-jobs/build/libs` directory
-3. Click on "Submit" to start the job.
-
-## Running the tests
-
-The project uses JUnit for testing. Navigate to the flink-jobs directory and run `gradle test` to execute the tests.
-
-## Code Overview
-
-The main class of the project is `RestaurantRelevanceJob`. It sets up a Flink streaming job that reads restaurant view and like events from Kafka, calculates a relevance score for each restaurant, and writes the scores back to Kafka.
-
-The job uses a sliding processing time window of 30 seconds with a slide of 5 seconds to calculate the relevance scores. The scores are calculated by the `RelevanceAggregate` and `RelevanceScoringFunction` classes.
-
-The `RestaurantEventDeserializationSchema` class is a schema used to deserialise the Kafka messages into `RestaurantEvent` objects.
-
-The `createKafkaSink` method creates a Kafka sink that writes the relevance scores back to Kafka.
-
-## Redis
-
-The Python script `print_relevance_scores.py` is used to print the relevance scores of restaurants in descending order. It connects to Redis and retrieves the sorted set data.
-
-Before running the script, make sure you have Python installed on your machine and the required Python packages are installed. You can install the latter using the `requirements.txt` file in the `python` directory:
 
 ```bash
-pip install -r python/requirements.txt
+docker-compose exec kafka kafka-topics --create --topic slack_messages --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
+
+docker-compose exec kafka kafka-topics --create --topic stanford_results --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
+
+docker-compose exec kafka kafka-topics --create --topic gpt4_results --partitions 1 --replication-factor 1 --bootstrap-server kafka:9092
 ```
 
-## Interacting with the Redis CLI
-Alternatively, you can interact with Redis using the Redis CLI. To do this, you need to connect to the Redis container.
-From within the Redis container, run:
+### Access the Real-Time Frontend
+
+1. **Open the Frontend**: Open a web browser and navigate to `http://localhost:8080`. This will display the real-time sentiment analysis results as they are streamed from the WebSocket server.
+
+![kafka-websocket-consumer.png](assets/images/kafka-websocket-consumer.png)
+
+## Example Results if Reading Directly from Kafka
+
+### Stanford CoreNLP Sentiment Analysis
+
+```plaintext
+SentimentAccumulator{start=2024-07-31T15:18:30, end=2024-07-31T15:19:30, averageScore=2.83, result='Positive', mostPositiveMessage='That was amazing!', mostNegativeMessage='Average, I think. I have seen better.', messageCount=5}
+```
+
+### GPT-4 Enhanced Sentiment Analysis
+
+```plaintext
+**Time Window:** 2024-07-31T15:18:30 - 2024-07-31T15:19:30  
+**Summary of Sentiment:**
+- **Overall Sentiment:** Positive  
+- **Most Positive Message:** "That was amazing!"  
+- **Most Negative Message:** "Average, I think. I have seen better."
+- **Message Count:** 5  
+The overall sentiment of the messages processed during the time window is neutral. The tone of the messages indicates that the users found their experiences to be mediocre, with phrases highlighting that things were "ok," "fine," and "average," suggesting an absence of strong emotion or enthusiasm. While there isn't outright negativity, the language used hints at a sense of disappointment or lack of fulfillment, implying that they expected something better. 
+```
+
+## Running the Tests
+
+The project uses JUnit for testing. Navigate to the `flink-jobs` directory and run:
 
 ```bash
-redis-cli
-```
-List all restaurants and their relevance scores:
-
-```bash
-ZRANGE restaurant_relevance 0 -1 WITHSCORES
+./gradlew test
 ```
 
-As interactions (views and likes) increase or decrease, the relevance score is adjusted, indicating an increase or decrease in current interest.
-
-## Kafka
-
-### Creating producers using the console:
-#### Restaurant Views
-```bash
-docker exec -it {container id} kafka-console-producer --broker-list localhost:9092 --topic restaurant_views
-```
-#### Restaurant Likes
-```bash
-docker exec -it {container id} kafka-console-producer --broker-list localhost:9092 --topic restaurant_likes
-```
-### Produce data:
-
-```
-{"restaurantId": "1", "eventType": "view", "timestamp": "2024-06-07T15:55:00Z"}
-{"restaurantId": "1", "eventType": "like", "timestamp": "2024-06-07T15:55:00Z"}
-```
-
-### Creating consumer using the console:
-
-```bash
-docker exec -it {container id} kafka-console-consumer --bootstrap-server localhost:9092 --topic restaurant_relevance --from-beginning
-```
-
-### Listing topics:
-
-```bash
-docker-compose exec kafka kafka-topics --list --bootstrap-server kafka:9092
-```
+This will execute the unit tests to ensure everything is functioning correctly.
 
 ## Authors
 
@@ -137,3 +114,4 @@ docker-compose exec kafka kafka-topics --list --bootstrap-server kafka:9092
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
+---
