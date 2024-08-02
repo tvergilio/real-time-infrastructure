@@ -3,6 +3,8 @@ package com.xdesign.flink.job;
 import com.xdesign.flink.processing.*;
 import com.xdesign.flink.transfer.SlackMessageDeserializationSchema;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.RestartStrategyOptions;
 import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
@@ -11,6 +13,7 @@ import org.apache.flink.streaming.api.windowing.assigners.SlidingProcessingTimeW
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 
+import java.time.Duration;
 import java.util.Properties;
 
 /**
@@ -20,7 +23,11 @@ import java.util.Properties;
 public class SentimentAnalysisJob {
 
     public static void main(String[] args) throws Exception {
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        Configuration config = new Configuration();
+        config.set(RestartStrategyOptions.RESTART_STRATEGY, "fixed-delay");
+        config.set(RestartStrategyOptions.RESTART_STRATEGY_FIXED_DELAY_ATTEMPTS, 3); // number of restart attempts
+        config.set(RestartStrategyOptions.RESTART_STRATEGY_FIXED_DELAY_DELAY, Duration.ofSeconds(10)); // delay
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment(config);
         var properties = new Properties();
         properties.setProperty("bootstrap.servers", "kafka:9092");
         properties.setProperty("group.id", "flink-group");

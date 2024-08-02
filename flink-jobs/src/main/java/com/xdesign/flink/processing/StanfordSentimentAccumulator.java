@@ -127,7 +127,7 @@ public class StanfordSentimentAccumulator {
         jsonNode.put("mostPositiveMessage", mostPositiveMessage != null ? mostPositiveMessage.getMessage() : "N/A");
         jsonNode.put("mostNegativeMessage", mostNegativeMessage != null ? mostNegativeMessage.getMessage() : "N/A");
         jsonNode.put("messageCount", messageCount);
-        jsonNode.put("averageScore", averageScore);
+        jsonNode.put("averageScore", Double.parseDouble(String.format("%.2f", averageScore)));
 
         // Convert JSON object to string
         try {

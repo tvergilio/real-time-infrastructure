@@ -59,11 +59,15 @@ public class GPT4SentimentProcessFunction extends ProcessAllWindowFunction<Slack
         long windowStart = context.window().getStart();
         long windowEnd = context.window().getEnd();
 
-        var accumulator = analyzeSentiment(messages, windowStart, windowEnd);
-        accumulator.setStart(windowStart);
-        accumulator.setEnd(windowEnd);
-
-        out.collect(accumulator);
+        try {
+            var accumulator = analyzeSentiment(messages, windowStart, windowEnd);
+            accumulator.setStart(windowStart);
+            accumulator.setEnd(windowEnd);
+            out.collect(accumulator);
+        } catch (IOException e) {
+            // Log the error and continue
+            System.out.println("Failed to call GPT-4 API: " + e.getMessage());
+        }
     }
 
     private GPT4SentimentAccumulator analyzeSentiment(List<SlackMessage> messages, long windowStart, long windowEnd) throws IOException {
@@ -104,27 +108,48 @@ public class GPT4SentimentProcessFunction extends ProcessAllWindowFunction<Slack
     }
 
     private String callGPT4API(String prompt) throws IOException {
-        var jsonRequest = objectMapper.writeValueAsString(Map.of(
-                "model", model,
-                "messages", List.of(
-                        Map.of("role", "system", "content", "You are a helpful assistant."),
-                        Map.of("role", "user", "content", prompt)
-                )
-        ));
+        int retryCount = 0;
+        int maxRetries = 3;
+        long waitTime = 1000; // Initial wait time of 1 second
 
-        var body = RequestBody.create(jsonRequest, MediaType.get("application/json; charset=utf-8"));
+        while (retryCount < maxRetries) {
+            try {
+                var jsonRequest = objectMapper.writeValueAsString(Map.of(
+                        "model", model,
+                        "messages", List.of(
+                                Map.of("role", "system", "content", "You are a helpful assistant."),
+                                Map.of("role", "user", "content", prompt)
+                        )
+                ));
 
-        var request = new Request.Builder()
-                .url("https://api.openai.com/v1/chat/completions")
-                .header("Authorization", "Bearer " + apiKey)
-                .post(body)
-                .build();
+                var body = RequestBody.create(jsonRequest, MediaType.get("application/json; charset=utf-8"));
 
-        try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                throw new IOException("Unexpected code " + response);
+                var request = new Request.Builder()
+                        .url("https://api.openai.com/v1/chat/completions")
+                        .header("Authorization", "Bearer " + apiKey)
+                        .post(body)
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Unexpected code " + response);
+                    }
+                    return response.body().string();
+                }
+            } catch (IOException e) {
+                retryCount++;
+                if (retryCount >= maxRetries) {
+                    throw e; // Rethrow exception if max retries reached
+                }
+                try {
+                    Thread.sleep(waitTime);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Retry interrupted", ie);
+                }
+                waitTime *= 2; // Exponential backoff
             }
-            return response.body().string();
         }
+        throw new IOException("Failed to call GPT-4 API after " + maxRetries + " attempts");
     }
 }
