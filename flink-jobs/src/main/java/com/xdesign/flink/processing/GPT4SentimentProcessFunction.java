@@ -19,10 +19,10 @@ import java.util.stream.Collectors;
 
 public class GPT4SentimentProcessFunction extends ProcessAllWindowFunction<SlackMessage, GPT4SentimentAccumulator, TimeWindow> {
 
-    private transient OkHttpClient client;
-    private transient ObjectMapper objectMapper;
     private final String apiKey;
     private final String model;
+    private transient OkHttpClient client;
+    private transient ObjectMapper objectMapper;
 
     public GPT4SentimentProcessFunction() {
         this.apiKey = System.getenv("OPENAI_API_KEY");
@@ -74,7 +74,7 @@ public class GPT4SentimentProcessFunction extends ProcessAllWindowFunction<Slack
     }
 
     private String createPrompt(List<SlackMessage> messages, long windowStart, long windowEnd) {
-        var formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneId.systemDefault());
+        var formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.of("Europe/London"));
         var startFormatted = formatter.format(Instant.ofEpochMilli(windowStart));
         var endFormatted = formatter.format(Instant.ofEpochMilli(windowEnd));
 
@@ -87,14 +87,13 @@ public class GPT4SentimentProcessFunction extends ProcessAllWindowFunction<Slack
                         "Messages Processed: %d\n\nMessages:\n%s\n\n" +
                         "Provide your answer in JSON format, as per the following structure:\n\n" +
                         "{\n" +
-                        "  \"Time Window\": \"[Start Time] - [End Time]\",\n" +
-                        "  \"Summary of Sentiment\": {\n" +
-                        "    \"Overall Sentiment\": \"[Overall Sentiment]\",\n" +
-                        "    \"Most Positive Message\": \"[Most Positive Message]\",\n" +
-                        "    \"Most Negative Message\": \"[Most Negative Message]\",\n" +
-                        "    \"Message Count\": [Message Count]\n" +
-                        "  },\n" +
-                        "  \"Descriptive Paragraph\": \"[Descriptive Paragraph]\"\n" +
+                        "  \"start\": \"[Start Time]\",\n" +
+                        "  \"end\": \"[End Time]\",\n" +
+                        "  \"overallSentiment\": \"[Overall Sentiment]\",\n" +
+                        "  \"mostPositiveMessage\": \"[Most Positive Message]\",\n" +
+                        "  \"mostNegativeMessage\": \"[Most Negative Message]\",\n" +
+                        "  \"messageCount\": [Message Count],\n" +
+                        "  \"descriptiveParagraph\": \"[Descriptive Paragraph]\"\n" +
                         "}\n\n" +
                         "Ensure that your answer is in JSON format, the JSON object is properly formatted and includes " +
                         "all the required fields. Do not include ```json or ``` around your response.\n\n",

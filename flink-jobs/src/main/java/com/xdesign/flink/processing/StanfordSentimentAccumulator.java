@@ -18,7 +18,7 @@ public class StanfordSentimentAccumulator {
     private long start;
     private long end;
     private double averageScore;
-    private String result;
+    private String sentiment;
     private SlackMessage mostPositiveMessage;
     private SlackMessage mostNegativeMessage;
     private int messageCount;
@@ -29,13 +29,13 @@ public class StanfordSentimentAccumulator {
         this.messageCount = 0;
     }
 
-    public void add(SlackMessage message, Tuple2<List<Integer>, List<String>> sentiment) {
-        scores.addAll(sentiment.f0);
-        classes.addAll(sentiment.f1);
+    public void add(SlackMessage message, Tuple2<List<Integer>, List<String>> value) {
+        scores.addAll(value.f0);
+        classes.addAll(value.f1);
         messageCount++;
 
-        int maxScore = sentiment.f0.stream().max(Integer::compareTo).orElse(Integer.MIN_VALUE);
-        int minScore = sentiment.f0.stream().min(Integer::compareTo).orElse(Integer.MAX_VALUE);
+        int maxScore = value.f0.stream().max(Integer::compareTo).orElse(Integer.MIN_VALUE);
+        int minScore = value.f0.stream().min(Integer::compareTo).orElse(Integer.MAX_VALUE);
 
         // Update the most positive message
         if (mostPositiveMessage == null || maxScore > getMaxScore() ||
@@ -50,7 +50,7 @@ public class StanfordSentimentAccumulator {
         }
 
         updateAverageScore();
-        result = classifySentiment(averageScore);
+        sentiment = classifySentiment(averageScore);
     }
 
     public void merge(StanfordSentimentAccumulator other) {
@@ -76,8 +76,8 @@ public class StanfordSentimentAccumulator {
             this.mostNegativeMessage = other.mostNegativeMessage;
         }
 
-        // Set result based on the new average score
-        this.result = classifySentiment(this.averageScore);
+        // Set sentiment based on the new average score
+        sentiment = classifySentiment(this.averageScore);
     }
 
     private void updateAverageScore() {
@@ -108,22 +108,26 @@ public class StanfordSentimentAccumulator {
 
     @Override
     public String toString() {
+        return toJson();
+    }
+
+    public String toJson() {
         var mapper = new ObjectMapper();
         var jsonNode = mapper.createObjectNode();
 
         // Formatting dates
-        var formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").withZone(ZoneId.systemDefault());
+        var formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.of("Europe/London"));
         var startFormatted = formatter.format(Instant.ofEpochMilli(start));
         var endFormatted = formatter.format(Instant.ofEpochMilli(end));
 
         // Construct JSON object
         jsonNode.put("start", startFormatted);
         jsonNode.put("end", endFormatted);
-        jsonNode.put("averageScore", averageScore);
-        jsonNode.put("result", result);
+        jsonNode.put("overallSentiment", sentiment);
         jsonNode.put("mostPositiveMessage", mostPositiveMessage != null ? mostPositiveMessage.getMessage() : "N/A");
         jsonNode.put("mostNegativeMessage", mostNegativeMessage != null ? mostNegativeMessage.getMessage() : "N/A");
         jsonNode.put("messageCount", messageCount);
+        jsonNode.put("averageScore", averageScore);
 
         // Convert JSON object to string
         try {
@@ -158,8 +162,8 @@ public class StanfordSentimentAccumulator {
         return averageScore;
     }
 
-    public String getResult() {
-        return result;
+    public String getSentiment() {
+        return sentiment;
     }
 
     public String getMostPositiveMessage() {

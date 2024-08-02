@@ -19,7 +19,7 @@ class SentimentAccumulatorTest {
 
         assertEquals(1, accumulator.getMessageCount());
         assertEquals(3.0, accumulator.getAverageScore(), 0.01);
-        assertEquals("Positive", accumulator.getResult());
+        assertEquals("Positive", accumulator.getSentiment());
         assertEquals("Fantastic!", accumulator.getMostPositiveMessage());
     }
 
@@ -38,7 +38,7 @@ class SentimentAccumulatorTest {
 
         assertEquals(2, accumulator1.getMessageCount());
         assertEquals(2.0, accumulator1.getAverageScore(), 0.01);
-        assertEquals("Neutral", accumulator1.getResult());
+        assertEquals("Neutral", accumulator1.getSentiment());
         assertEquals("Fantastic!", accumulator1.getMostPositiveMessage());
         assertEquals("Awful!", accumulator1.getMostNegativeMessage());
     }
