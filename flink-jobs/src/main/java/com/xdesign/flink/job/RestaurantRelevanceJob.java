@@ -41,38 +41,29 @@ public class RestaurantRelevanceJob {
         var eventsStream = viewsStream.union(likesStream)
                 .filter(Objects::nonNull);
 
+        // Disable operator chaining for better visualisation
+        env.disableOperatorChaining();
+
         // Apply windowing and aggregation to calculate relevance scores
         var  jsonStream = eventsStream.keyBy(RestaurantEvent::getRestaurantId)
                 .window(SlidingProcessingTimeWindows.of(Time.seconds(30), Time.seconds(5)))
                 .allowedLateness(Time.seconds(2))
                 .aggregate(new RelevanceAggregate(), new RelevanceScoringFunction())
-                .startNewChain()
                 .name("Window/Aggregate/Score")
                 .uid("score")
 
                 // Convert the RestaurantRelevance object to JSON
                 .map(new ObjectMapper()::writeValueAsString)
-                .startNewChain()
                 .name("Convert to JSON")
                 .uid("json");
 
-        // Separate streams for Kafka and Redis sinks
-        var kafkaStream = jsonStream.map(value -> value)
-                .startNewChain()
-                .name("Kafka Stream")
-                .uid("kafka-stream");
-        var redisStream = jsonStream.map(value -> value)
-                .startNewChain()
-                .name("Redis Stream")
-                .uid("redis-stream");
-
         // Sink the JSON to a Kafka topic
-        kafkaStream.sinkTo(createKafkaSink(kafkaProperties.getProperty("bootstrap.servers")))
+        jsonStream.sinkTo(createKafkaSink(kafkaProperties.getProperty("bootstrap.servers")))
                 .name("Sink to Kafka")
                 .uid("sink-kafka");
 
         // Sink the JSON to Redis
-        redisStream.sinkTo(new RedisSink("redis", 6379))
+        jsonStream.sinkTo(new RedisSink("redis", 6379))
                 .name("Sink to Redis")
                 .uid("sink-redis");
 
