@@ -2,6 +2,7 @@ package com.xdesign.flink.processing;
 
 import com.xdesign.flink.model.RestaurantRelevance;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,6 +20,9 @@ class RelevanceScoringFunctionTest {
         // Arrange
         var function = new RelevanceScoringFunction();
         var mockContext = mock(ProcessWindowFunction.Context.class);
+        var mockWindow = mock(TimeWindow.class);
+        when(mockContext.window()).thenReturn(mockWindow);
+        when(mockWindow.getEnd()).thenReturn(1620000000000L);
         var mockCollector = mock(Collector.class);
         var accumulator = new RelevanceAccumulator();
         accumulator.viewCount = 10;
@@ -35,6 +39,7 @@ class RelevanceScoringFunctionTest {
         var capturedRelevance = argumentCaptor.getValue();
         assertEquals("restaurantId", capturedRelevance.getRestaurantId());
         assertEquals(10 * 0.1 + 5 * 1.0, capturedRelevance.getRelevanceScore());
+        assertEquals(1620000000000L, capturedRelevance.getTimestamp());
     }
 
     @Test
@@ -53,6 +58,9 @@ class RelevanceScoringFunctionTest {
         // Arrange
         var function = new RelevanceScoringFunction();
         var mockContext = mock(ProcessWindowFunction.Context.class);
+        var mockWindow = mock(TimeWindow.class);
+        when(mockContext.window()).thenReturn(mockWindow);
+        when(mockWindow.getEnd()).thenReturn(1620000000000L);
         var mockCollector = mock(Collector.class);
         var accumulator1 = new RelevanceAccumulator();
         accumulator1.viewCount = 10;
@@ -72,6 +80,7 @@ class RelevanceScoringFunctionTest {
         var capturedRelevance = argumentCaptor.getValue();
         assertEquals("restaurantId", capturedRelevance.getRestaurantId());
         assertEquals(10 * 0.1 + 5 * 1.0, capturedRelevance.getRelevanceScore());
+        assertEquals(1620000000000L, capturedRelevance.getTimestamp());
     }
 
     @Test
@@ -79,7 +88,11 @@ class RelevanceScoringFunctionTest {
         // Arrange
         var function = new RelevanceScoringFunction();
         var mockContext = mock(ProcessWindowFunction.Context.class);
+        var mockWindow = mock(TimeWindow.class);
         var mockCollector = mock(Collector.class);
+        when(mockContext.window()).thenReturn(mockWindow);
+        when(mockWindow.getEnd()).thenReturn(1620000000000L);
+
         var accumulator = new RelevanceAccumulator();
         accumulator.viewCount = 0;
         accumulator.likeCount = 0;
@@ -95,6 +108,7 @@ class RelevanceScoringFunctionTest {
         var capturedRelevance = argumentCaptor.getValue();
         assertEquals("restaurantId", capturedRelevance.getRestaurantId());
         assertEquals(0, capturedRelevance.getRelevanceScore());
+        assertEquals(1620000000000L, capturedRelevance.getTimestamp());
     }
 
     @Test
