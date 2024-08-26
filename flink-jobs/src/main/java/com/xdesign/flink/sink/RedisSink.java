@@ -47,10 +47,17 @@ public class RedisSink implements Sink<String> {
                 var relevance = mapper.readValue(element, RestaurantRelevance.class);
                 var restaurantId = relevance.getRestaurantId();
                 var score = relevance.getRelevanceScore();
-                jedis.zadd("restaurant_relevance", score, restaurantId);
+                var key = "restaurant_relevance";
+                jedis.zincrby(key, score, restaurantId);
+                jedis.expireAt(key, getExpiryTime(relevance.getTimestamp()));
             } catch (Exception e) {
                 throw new IOException("Failed to write to Redis", e);
             }
+        }
+
+        private long getExpiryTime(long timestamp) {
+            long expirationTime = 30 + 2; // 30 seconds window + 2 seconds allowed lateness
+            return timestamp + expirationTime * 1000;
         }
 
         @Override

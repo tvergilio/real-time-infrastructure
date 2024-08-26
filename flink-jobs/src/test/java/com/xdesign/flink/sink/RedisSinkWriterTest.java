@@ -29,7 +29,8 @@ public class RedisSinkWriterTest {
         // Arrange
         var restaurantId = "1";
         var score = 4.5;
-        var relevance = new RestaurantRelevance(restaurantId, score);
+        var timestamp = 123456789L;
+        var relevance = new RestaurantRelevance(restaurantId, score, timestamp);
         var json = objectMapper.writeValueAsString(relevance);
 
         // Act
@@ -37,7 +38,7 @@ public class RedisSinkWriterTest {
 
         // Assert
         verify(jedisMock, times(1))
-                .zadd("restaurant_relevance", score, restaurantId);
+                .zincrby("restaurant_relevance", score, restaurantId);
     }
 
     @Test

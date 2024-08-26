@@ -6,14 +6,16 @@ package com.xdesign.flink.model;
 public class RestaurantRelevance {
     private String restaurantId;
     private double relevanceScore;
+    private long timestamp;
 
     // Default constructor
     public RestaurantRelevance() {
     }
 
-    public RestaurantRelevance(String restaurantId, double relevanceScore) {
+    public RestaurantRelevance(String restaurantId, double relevanceScore, long timestamp) {
         this.restaurantId = restaurantId;
         this.relevanceScore = relevanceScore;
+        this.timestamp = timestamp;
     }
 
     public String getRestaurantId() {
@@ -30,5 +32,13 @@ public class RestaurantRelevance {
 
     public void setRelevanceScore(double relevanceScore) {
         this.relevanceScore = relevanceScore;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 }

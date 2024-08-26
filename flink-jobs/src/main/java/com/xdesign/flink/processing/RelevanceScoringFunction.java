@@ -21,6 +21,6 @@ public class RelevanceScoringFunction extends
             throw new IllegalArgumentException("View count and like count must not be negative");
         }
         var relevanceScore = acc.viewCount * 0.1 + acc.likeCount * 1.0;  // Example scoring
-        out.collect(new RestaurantRelevance(key, relevanceScore));
+        out.collect(new RestaurantRelevance(key, relevanceScore, context.window().getEnd()));
     }
 }
